@@ -77,6 +77,19 @@ function applyCornerSize(){
   }
 }
 
+/* turn.js keeps ~6 pages in the DOM but only two are on screen; without this a
+   screen reader reads straight through the ones behind the current spread. */
+function syncPageA11y(){
+  if(!bookInited) return;
+  const shown = new Set($book.turn('view').filter(Boolean));
+  pageEls.forEach((el, i) => {
+    const on = shown.has(i + 1);
+    el.setAttribute('aria-hidden', on ? 'false' : 'true');
+    el.querySelectorAll('a[href],button,input,select,textarea,details,summary')
+      .forEach(f => { if(on) f.removeAttribute('tabindex'); else f.setAttribute('tabindex','-1'); });
+  });
+}
+
 function paint(){
   if(!bookInited) return;
   const page = curPage();
@@ -138,9 +151,11 @@ function initBook(){
       turning: function(){
         document.documentElement.classList.add('flipping');
       },
-      turned: function(){
+      turned: function(e, page){
         document.documentElement.classList.remove('flipping');
         applyCornerSize();
+        syncPageA11y();
+        setMood(PLAN[pageToSpread(page)] || 'happy');
         paint();
       }
     }
@@ -156,6 +171,8 @@ function initBook(){
   });
 
   applyCornerSize();
+  syncPageA11y();
+  setMood(PLAN[pageToSpread(curPage())] || 'wave');
   paint();
   moveSprout();
 }
@@ -257,18 +274,10 @@ const MOODS={
   calm:   {mouth:'M109 165c5 4 13 4 18 0', brows:0, eyes:'normal'},
   think:  {mouth:'M109 166h20', brows:1, browL:'M88 124c6-3 13-3 19 1', browR:'M131 125c6-4 13-4 19 0', eyes:'normal'}
 };
-const PLAN=[
-  {mood:'wave',    side:'r', vy:.62},
-  {mood:'calm',    side:'l', vy:.30},
-  {mood:'proud',   side:'r', vy:.30},
-  {mood:'curious', side:'r', vy:.68},
-  {mood:'happy',   side:'l', vy:.72},
-  {mood:'think',   side:'r', vy:.30},
-  {mood:'proud',   side:'l', vy:.34},
-  {mood:'happy',   side:'r', vy:.66},
-  {mood:'calm',    side:'l', vy:.66},
-  {mood:'wave',    side:'r', vy:.60}
-];
+/* Sprout's expression for each of the 10 spreads. The `side`/`vy` fields this
+   list used to carry are gone: Sprout keeps one spot in the roomier margin now,
+   so only the mood still means anything. Applied from turn.js's `turned`. */
+const PLAN=['wave','calm','proud','curious','happy','think','proud','happy','calm','wave'];
 
 function setEyes(kind){
   if(kind==='happyclosed'){
@@ -334,9 +343,48 @@ function soon(fn, ms){
   setTimeout(run, ms || 32);
 }
 
+/* ---------- Focus management for the overlays ----------
+ * Both the portal and the assessment modal cover the book, so focus has to be
+ * held inside them: without this, tabbing walks out of the dialog and into the
+ * pages behind it, which are still there and still focusable. */
+const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+let lastFocus = null;
+
+function focusablesIn(el){
+  return [...el.querySelectorAll(FOCUSABLE)].filter(n => n.offsetParent !== null || n === document.activeElement);
+}
+function trapFocus(e){
+  const box = document.querySelector('.modal.open .modalbox') ||
+              document.querySelector('.portal-overlay.open');
+  if(!box || e.key !== 'Tab') return;
+  const f = focusablesIn(box);
+  if(!f.length) return;
+  const first = f[0], last = f[f.length - 1];
+  if(e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
+  else if(!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
+}
+document.addEventListener('keydown', trapFocus, true);
+
+function openOverlay(el){
+  lastFocus = document.activeElement;
+  el.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  el.setAttribute('role','dialog');
+  el.setAttribute('aria-modal','true');
+  const f = focusablesIn(el);
+  if(f.length) setTimeout(() => f[0].focus(), 40);
+}
+function closeOverlay(el){
+  el.classList.remove('open');
+  el.removeAttribute('aria-modal');
+  document.body.style.overflow = '';
+  if(lastFocus && lastFocus.focus) lastFocus.focus();
+  lastFocus = null;
+}
+
 /* ---------- Portal ---------- */
-function openPortal(){document.getElementById('portal').classList.add('open');document.body.style.overflow='hidden'}
-function closePortal(){document.getElementById('portal').classList.remove('open');document.body.style.overflow='';logout()}
+function openPortal(){openOverlay(document.getElementById('portal'))}
+function closePortal(){closeOverlay(document.getElementById('portal'));logout()}
 function doLogin(){document.getElementById('loginCard').style.display='none';document.getElementById('dash').classList.add('on')}
 function logout(){document.getElementById('loginCard').style.display='block';document.getElementById('dash').classList.remove('on')}
 
@@ -344,8 +392,8 @@ function logout(){document.getElementById('loginCard').style.display='block';doc
 const WHATSAPP_NUMBER="91XXXXXXXXXX";   /* <-- put the real number here */
 const WA_READY=!WHATSAPP_NUMBER.includes('X');
 document.getElementById('year').textContent=new Date().getFullYear();
-function openModal(){document.getElementById('modal').classList.add('open')}
-function closeModal(){document.getElementById('modal').classList.remove('open');setTimeout(()=>{document.getElementById('formArea').style.display='block';document.getElementById('success').style.display='none';},200)}
+function openModal(){openOverlay(document.getElementById('modal'))}
+function closeModal(){closeOverlay(document.getElementById('modal'));setTimeout(()=>{document.getElementById('formArea').style.display='block';document.getElementById('success').style.display='none';},200)}
 function waLink(d){const t=`Hello Home Learning,%0A%0AI'd like to enquire about English tuition.%0A%0AParent: ${d.parent}%0AStudent: ${d.student}%0AClass: ${d.class}%0ABoard: ${d.board}%0APhone: ${d.phone}%0ANeeds: ${d.message||'Not specified'}%0A%0APlease share the free assessment details.`;return `https://wa.me/${WHATSAPP_NUMBER}?text=${t}`}
 document.getElementById('leadForm').addEventListener('submit',function(e){
   e.preventDefault();

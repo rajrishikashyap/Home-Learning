@@ -1,7 +1,7 @@
 :root{
   --ink:#2a2a26; --deep:#1f3a33; --deep2:#2c5248; --sage:#6f8a7b;
   --cream:#f6f1e4; --paper:#faf6ec; --paper2:#f1ead8;
-  --gold:#b3843b; --gold-soft:#e8d3a6; --muted:#6b7069;
+  --gold:#b3843b; --gold-ink:#8f6a2f; --gold-soft:#e8d3a6; --muted:#6b7069;
   --line:#e2dcc9; --edge:#d8cfb6;
   --shadow:0 30px 80px rgba(31,58,51,.18);
   --book-w: 1180px;
@@ -107,8 +107,11 @@ html.flipping .topbar{backdrop-filter:none}
     radial-gradient(120% 80% at 50% 0%, rgba(255,255,255,.5), transparent 60%);
   mix-blend-mode:multiply}
 .page.left{border-right:1px solid rgba(150,130,80,.15)}
-.page.plate{padding:0;overflow:hidden;background:#4a3320}
-.page.plate img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;display:block;z-index:2}
+.page.plate{padding:0;overflow:hidden;background:#c7bdb4}
+.page.plate img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  /* the art is tall (736x1308); bias the crop upward so the face and the
+     laptop stay in frame rather than the empty floor at the bottom */
+  object-position:center 38%;display:block;z-index:2}
 .page-inner{flex:1 1 auto;min-height:0;width:100%;
   display:flex;flex-direction:column;justify-content:flex-start;
   overflow-y:auto;overflow-x:hidden;padding:8px 0;
@@ -121,10 +124,10 @@ html.flipping .topbar{backdrop-filter:none}
 .page.right:before{content:"";position:absolute;top:0;bottom:0;left:0;width:60px;background:linear-gradient(-90deg,transparent,rgba(90,70,35,.08));pointer-events:none;z-index:5}
 
 .running-head{flex:none;order:-1;padding:16px 0 10px;gap:16px;
-  font-size:10.5px;letter-spacing:.2em;color:#a99f83;text-transform:uppercase;
+  font-size:10.5px;letter-spacing:.2em;color:#78715d;text-transform:uppercase;
   display:flex;justify-content:space-between}
 .running-head span:first-child{white-space:nowrap}
-.folio{flex:none;order:99;text-align:center;padding:8px 0 14px;font-size:12px;color:#9a9078;font-style:italic}
+.folio{flex:none;order:99;text-align:center;padding:8px 0 14px;font-size:12px;color:#78705e;font-style:italic}
 
 /* ---------- Page flip: turn.js 3 ----------
  * turn.js wraps every .page in a .turn-page-wrapper and positions both
@@ -211,7 +214,7 @@ html.flipping .topbar{backdrop-filter:none}
 .progress button.on{background:var(--gold-soft);transform:scale(1.35)}
 
 /* ---------- Typography inside pages ---------- */
-.eyebrow{font-family:"Caveat";font-size:22px;color:var(--gold);line-height:1;margin-bottom:6px}
+.eyebrow{font-family:"Caveat";font-size:22px;color:var(--gold-ink);line-height:1;margin-bottom:6px}
 h1.title{font-size:clamp(38px,5vw,62px);font-weight:600;letter-spacing:-.01em}
 h2.title{font-size:clamp(28px,3.4vw,42px);font-weight:600;margin-bottom:14px}
 .lede{font-size:clamp(17px,1.5vw,20px);color:#4a4f48;max-width:44ch;margin-top:14px}
@@ -225,7 +228,7 @@ h2.title{font-size:clamp(28px,3.4vw,42px);font-weight:600;margin-bottom:14px}
   font-family:"Fraunces";font-style:italic;font-size:22px;color:var(--deep);
   border-left:3px solid var(--gold);padding-left:18px;margin:22px 0;line-height:1.35;max-width:40ch
 }
-.hand{font-family:"Caveat";font-size:20px;color:var(--gold);transform:rotate(-2deg);display:inline-block}
+.hand{font-family:"Caveat";font-size:20px;color:var(--gold-ink);transform:rotate(-2deg);display:inline-block}
 
 /* buttons inside book */
 .btn{
@@ -251,7 +254,7 @@ h2.title{font-size:clamp(28px,3.4vw,42px);font-weight:600;margin-bottom:14px}
 .cover h1{font-size:clamp(40px,5.4vw,66px);font-weight:600}
 .cover .moto{font-family:"Caveat";font-size:26px;color:var(--gold);margin-top:2px}
 .cover .sub{color:#4a4f48;max-width:34ch;margin:6px auto 0}
-.cover .est{margin-top:14px;font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:#a99f83}
+.cover .est{margin-top:14px;font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:#78715d}
 
 /* icon list / feature list */
 .feature{display:flex;gap:14px;align-items:flex-start;margin:16px 0}
@@ -325,6 +328,9 @@ h2.title{font-size:clamp(28px,3.4vw,42px);font-weight:600;margin-bottom:14px}
 .portal-shell{max-width:1120px;margin:0 auto;min-height:100%;display:flex;flex-direction:column}
 .portal-top{display:flex;align-items:center;justify-content:space-between;padding:16px clamp(16px,4vw,32px);background:var(--deep);color:#f6f1e4}
 .portal-top .brand .name{color:#f6f1e4}
+.preview-tag{display:inline-block;margin-left:12px;padding:3px 9px;border-radius:999px;
+  background:rgba(255,255,255,.16);color:#f6f1e4;font-size:11px;letter-spacing:.08em;
+  text-transform:uppercase;vertical-align:middle}
 .portal-close{background:rgba(255,255,255,.12);color:#fff;border:0;border-radius:8px;padding:9px 14px;cursor:pointer}
 .portal-body{flex:1;padding:clamp(18px,4vw,36px);background:#eef2ea}
 
@@ -358,12 +364,12 @@ table.mini{width:100%;border-collapse:collapse;font-size:14px}
 table.mini th,table.mini td{text-align:left;padding:10px 8px;border-bottom:1px solid #eef1ec}
 table.mini th{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 .badge{display:inline-block;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:600}
-.badge.paid{background:#e4f0e8;color:#3f7d5b}
-.badge.due{background:#f6e7cf;color:#96662a}
+.badge.paid{background:#e4f0e8;color:#3c7756}
+.badge.due{background:#f6e7cf;color:#8c5f27}
 .badge.pending{background:#f3e3e0;color:#9a4a3c}
 .att-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:6px}
 .att{aspect-ratio:1;border-radius:7px;display:grid;place-items:center;font-size:12px;color:#fff}
-.att.p{background:#5c9a76}.att.a{background:#d08c86}.att.h{background:#d8cfb6;color:#7a7358}
+.att.p{background:#4d8163}.att.a{background:#9c6964}.att.h{background:#d8cfb6;color:#5e5944}
 .att-legend{display:flex;gap:16px;margin-top:12px;font-size:12px;color:var(--muted)}
 .att-legend i{width:11px;height:11px;border-radius:3px;display:inline-block;margin-right:5px;vertical-align:middle}
 .remark{border-left:3px solid var(--gold);padding:4px 0 4px 14px;margin-bottom:14px}

@@ -123,6 +123,8 @@ function applyMood(name){
     browR.rotation.z =  (mood.browTilt || 0);
   }
   eyeTarget = mood.eye;
+  /* with the loop stopped there is no next frame to pick this up, so draw it */
+  if(reduceM && typeof renderer !== 'undefined') renderer.render(scene, camera);
 }
 applyMood('happy');
 
@@ -143,11 +145,12 @@ function beat(){
   tick(Math.min(clock.getDelta() || 0.016, 0.05));
 }
 function frame(){
-  if(!running) return;
+  if(!running || reduceM) return;      /* reduced motion: one static pose, no loop */
   requestAnimationFrame(frame);
   beat();
 }
-setInterval(() => { if(performance.now() - lastBeat > 90) beat(); }, 1000/30);
+if(!reduceM)
+  setInterval(() => { if(performance.now() - lastBeat > 90) beat(); }, 1000/30);
 function tick(dt){
   T += dt; const t = T;
 
@@ -222,7 +225,7 @@ host.classList.add('is3d');
 canvas.style.display = 'block';
 
 renderer.render(scene, camera);
-frame();
+frame();   /* no-op under prefers-reduced-motion; the static render above stands */
 
 if(typeof window.moveSprout === 'function') window.moveSprout();
 else if(typeof moveSprout === 'function') moveSprout();
