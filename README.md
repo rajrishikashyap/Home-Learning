@@ -22,11 +22,11 @@ module and needs a real origin.
 
 ```
 index.html                  markup for all 20 pages
-assets/css/fonts.css        @font-face for the three self-hosted families
-assets/css/site.css         design system + book/flip CSS
+assets/css/fonts.css        @font-face — Quicksand, Nunito Sans, Caveat
+assets/css/site.css         design tokens, motion primitives, components
 assets/js/book.js           turn.js setup, scroll gesture, portal, lead form
 assets/js/sprout-3d.js      "Sprout" mascot (three.js, ES module)
-assets/fonts/               Fraunces, Newsreader, Caveat (woff2)
+assets/fonts/               Quicksand, Nunito Sans, Caveat (variable woff2)
 assets/img/                 logo + philosophy plate
 vendor/                     third-party libraries
 ```
@@ -76,45 +76,77 @@ Open by choice, not by oversight:
 
 ## Fixed
 
-- **Mobile mirror bug.** In single-page mode (≤900px) the old CSS-3D engine
-  reused the leaf's back face without clearing its `rotateY(180deg)`, so all 10
-  even-numbered pages rendered as mirror writing. Moot now that turn.js owns
-  display mode, but fixed either way.
-- **Philosophy plate.** Replaced with new artwork and encoded as WebP:
-  **5.52 MB → 88 KB**, a 64× reduction, and no longer 82% of page weight. The
-  Apple logo on the laptop lid was painted out — a trademark on a commercial
-  page — and the plate background now matches the art instead of clashing dark
-  brown. Crop biased to `center 38%` so the face and laptop stay in frame.
-- **Fonts.** Cyrillic and Vietnamese subsets dropped (190 KB of glyphs that
-  could never render on an English site). The remaining faces are variable
-  fonts that Google emits as one `@font-face` per weight all pointing at the
-  same file — collapsed to one block per file with a weight *range*, 22 blocks
-  down to 8.
-- **Dashboard arithmetic.** The attendance marks are 7 present / 1 absent /
-  1 holiday = 87.5%; the stat tile claimed 92%. Now 88%.
-- **Contrast.** Every piece of chrome that failed WCAG AA now passes: running
-  heads 2.44 → 4.51, folios 2.93 → 4.55, cover subtitle 2.44 → 4.51, the
-  absent-day marker 2.70 → 4.55, present 3.31 → 4.53, both dashboard badges,
-  and the closing-page copyright. Gold split into `--gold` (decorative fills,
-  unchanged) and `--gold-ink` (text, darkened to 4.56).
-- **Focus traps.** The modal and the portal both hold Tab inside themselves,
-  restore focus to whatever opened them, and set `role="dialog"`/`aria-modal`.
-  Previously Tab walked straight out into the pages behind the overlay.
-- **Off-screen pages hidden from assistive tech.** turn.js keeps ~6 pages in
-  the DOM but only two on screen; the rest are now `aria-hidden` with their
-  focusables taken out of the tab order.
-- **Dead mascot code wired up.** `PLAN` and `setMood()` were fully written and
-  never called — Sprout's expression ran off a random timer with no relation to
-  the page. It now changes on turn.js's `turned` event, so it is curious on
-  "What we teach" and proud on "Your tutor", as the list always intended. The
-  `side`/`vy` fields were removed: Sprout keeps one margin position now, so
-  they described behaviour that no longer exists.
-- **Reduced motion in the 3D mascot.** `reduceM` was declared and never used,
-  so the WebGL mascot animated regardless of the OS setting while the SVG one
-  respected it. It now renders a single static pose and skips the loop.
-- **`.turn-page .more-fade`.** A leftover that was inert under the old engine
-  but would have hidden the overflow hint on all 20 pages once turn.js added
-  `.turn-page` to every page. Scoped to `#turn-fwrappers`.
+- **Blank spread before the cover.** Pages had no background until turn.js added
+  `.turn-page`, so the bare book showed for a beat on load. Pages now carry
+  `--paper` from the start, and `#flipbook` fades up only once turn.js has
+  actually laid them out (`.ready`).
+- **Turn arrows stacked on top of each other.** `.turn.prev`/`.turn.next` lost
+  their `left`/`right` offsets, so both sat at the book's left edge and the
+  next arrow was unreachable on desktop. Restored at `∓24px`.
+- **Reduced motion killed the page turn.** `FLIP_MS` was 0 under
+  `prefers-reduced-motion`, which turn.js took literally as a 1 ms turn — 15
+  fold frames instead of 177, reading as a broken swap rather than a
+  considerate one. Now 280 ms (69 frames): the big sweep is gone, the cue
+  isn't. If a Windows machine has *Show animations* off, this is what it hits.
+- **Brand lock-up wrapped on phones.** At 390 px the name broke over two lines
+  and the Caveat tagline ran to three, colliding with the mark. Name stays on
+  one line under 620 px; the tagline steps aside.
+- **Mobile mirror bug.** The old CSS-3D engine reused the leaf's back face
+  without clearing its `rotateY(180deg)`. Moot now that turn.js owns display
+  mode, but fixed either way.
+- **Philosophy plate.** New artwork, WebP: **5.52 MB → 88 KB**. Apple logo
+  painted off the laptop lid (a trademark on a commercial page), plate
+  background matched to the art, crop biased to `center 38%`.
+- **Fonts.** Retired Fraunces and Newsreader for Quicksand + Nunito Sans; kept
+  Caveat. Dropped Cyrillic and Vietnamese subsets. **700 KB → 296 KB.**
+- **Dashboard arithmetic.** 7 present / 1 absent / 1 holiday is 87.5%, not 92%.
+- **Contrast.** Every text token is verified ≥4.5:1 on every surface it is
+  actually used on, soft tints included.
+- **Focus traps.** Modal and portal hold Tab, restore focus on close, set
+  `role="dialog"`/`aria-modal`.
+- **Off-screen pages hidden from assistive tech.**
+- **Dead mascot code wired up.** `PLAN`/`setMood()` were written and never
+  called; Sprout's expression now follows the spread.
+- **Reduced motion in the 3D mascot.** `reduceM` was declared and never used.
+- **`.turn-page .more-fade`.** Would have hidden the overflow hint on all 20
+  pages once turn.js added `.turn-page` to every page.
+
+## Design system
+
+A warm, light "cozy" system, replacing the deep forest-green ground the site
+started with. Tokens live at the top of `assets/css/site.css`.
+
+- **Type.** Quicksand (rounded geometric) for headings and brand; Nunito Sans
+  (humanist geometric) for body and dashboard data; Caveat for the handwritten
+  margin notes. All variable, latin + latin-ext only, self-hosted.
+- **Colour.** Oat-to-blush ground, warm white paper, three pastel accents —
+  peach, honey, sage. Each accent has a *soft* fill and a darker *ink* twin for
+  text, because the fill tints can't carry type at AA.
+- **Radii.** 12 / 16 / 20 / 24 px plus a pill. No square corners.
+- **Depth.** Four levels, each a stack of three low-opacity warm-tinted
+  shadows. A tight contact shadow under a wide ambient one is what makes a
+  surface look like it is resting on something; one big blur just reads grey.
+- **States.** Default, hover, focus-visible, active and disabled are designed
+  for every interactive element.
+
+### Motion
+
+`--spring` is a real spring — stiffness 450, damping 18, mass 1 — integrated
+and sampled into a CSS `linear()` easing. ζ = 0.42, so it overshoots ~23% and
+settles: that overshoot is the squish. Hover scales to 1.03, press to 0.97.
+
+Framer Motion was the brief, but it is React-only and this is a vanilla
+document, so the physics is computed rather than imported — same curve, no
+runtime.
+
+Entry is orchestrated by `staggerIn()`: when a spread arrives its blocks rise
+in 50 ms apart, driven by a `--i` custom property. **Only `opacity` and
+`transform` are animated anywhere** — nothing touches height, margin or any
+layout property, so no animation can shift the page mid-turn.
+
+All of it collapses under `prefers-reduced-motion`: springs become plain colour
+transitions, the stagger is off, and the page turn shortens rather than
+vanishing.
 
 ## Page-turn engine
 

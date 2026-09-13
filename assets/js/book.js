@@ -19,7 +19,11 @@ const prog    = document.getElementById('progress');
 const reduce  = window.matchMedia('(prefers-reduced-motion:reduce)').matches;
 const isNarrow = () => (window.innerWidth || document.documentElement.clientWidth || 1024) <= 900;
 
-const FLIP_MS    = reduce ? 0 : 820;
+/* Reduced motion shortens the turn rather than removing it. turn.js takes
+   `duration` literally, and a 1ms turn reads as a broken page-swap, not as a
+   considerate one — the intent of the setting is to avoid large sweeping
+   motion, not to strip every cue that something happened. */
+const FLIP_MS    = reduce ? 280 : 820;
 const CORNER_PX  = jQuery.isTouch ? 28 : 56;
 const SPREAD_LABELS = ['Cover & welcome','The idea','Roots & philosophy','Our story',
   'What we teach','How it works','Your tutor','Programme & fee','Principles','Questions & contact'];
@@ -67,6 +71,22 @@ function updateMore(){
 
 /* turn.js rebuilds a page's flip when it re-enters the range, which resets the
    corner size, so this is reapplied on every turn rather than once at init */
+/* Entry orchestration. When a spread arrives, its blocks rise in 50ms apart.
+   Only opacity and transform are animated — nothing here touches height or
+   margin, so a stagger can never shift layout mid-turn. The index is written
+   as a custom property; the easing itself lives in CSS. */
+function staggerIn(){
+  if(reduce) return;
+  visiblePages().forEach(pg => {
+    const inner = pg.querySelector('.page-inner');
+    if(!inner) return;
+    inner.classList.remove('stagger');
+    [...inner.children].forEach((el, i) => el.style.setProperty('--i', i));
+    void inner.offsetWidth;          /* restart the animation on re-entry */
+    inner.classList.add('stagger');
+  });
+}
+
 function applyCornerSize(){
   const data = $book.data();
   if(!data || !data.pages) return;
@@ -143,7 +163,7 @@ function initBook(){
     height:       size.h,
     display:      isNarrow() ? 'single' : 'double',
     page:         2,                      /* open on the cover, not the endpaper */
-    duration:     FLIP_MS || 1,
+    duration:     FLIP_MS,
     acceleration: true,
     elevation:    50,                     /* the lift before the page swings */
     gradients:    !jQuery.isTouch,        /* the fold shading costs too much on touch */
@@ -156,6 +176,7 @@ function initBook(){
         applyCornerSize();
         syncPageA11y();
         setMood(PLAN[pageToSpread(page)] || 'happy');
+        staggerIn();
         paint();
       }
     }
@@ -175,6 +196,12 @@ function initBook(){
   setMood(PLAN[pageToSpread(curPage())] || 'wave');
   paint();
   moveSprout();
+
+  /* Until turn.js has wrapped and positioned the pages there is a moment where
+     the book is just an empty shell — that was the blank spread you saw before
+     the cover appeared. The pages now carry their own paper colour (see
+     site.css) and the book fades up only once it is actually built. */
+  requestAnimationFrame(() => { bookEl.classList.add('ready'); staggerIn(); });
 }
 
 function resizeBook(){
