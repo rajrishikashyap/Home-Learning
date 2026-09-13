@@ -158,15 +158,12 @@ timer that overrode whatever expression the current spread had just requested.
 
 ## Why it can look different on two computers
 
-The site adapts to machine settings, and one of them changes a lot: **Windows
-"Animation effects" off** (Settings → Accessibility → Visual effects) reports
-`prefers-reduced-motion: reduce` to the browser.
+`check-my-browser.html` reports what a machine supports and what is switched on.
+Run it on any computer the site looks wrong on — it sends nothing anywhere.
 
-`check-my-browser.html` is a standalone page that reports what the current
-machine supports and what is switched on — open it on any computer that looks
-wrong. It sends nothing anywhere.
-
-What reduced motion now does, after a rethink:
+**Reduced motion** (Windows → Settings → Accessibility → Visual effects →
+"Animation effects" off) reports `prefers-reduced-motion: reduce`. What it now
+does, after a rethink:
 
 | kept | removed |
 |---|---|
@@ -176,20 +173,35 @@ What reduced motion now does, after a rethink:
 | a 280 ms page turn | the full 820 ms fold |
 
 The first pass over-applied it: `.sprout, .sprout *{animation:none!important}`
-froze the mascot completely, and `waveOnce()` / `startIdleLife()` / `staggerIn()`
-all returned early, so *every* feature on the list above vanished. The guidance
-is about vestibular triggers — parallax, zoom, large travel. A face changing
-shape, a fade, and a hand waving hello are none of those, and removing them left
-the page feeling broken rather than considerate.
+froze the mascot, and `waveOnce()` / `startIdleLife()` / `staggerIn()` all
+returned early, so *every* feature above vanished. The guidance is about
+vestibular triggers — parallax, zoom, large travel. A face changing shape, a
+fade, and a hand waving hello are none of those.
 
-**`linear()` easing** is the other machine-dependent piece. It needs Chrome/Edge
-113+, Firefox 112+, or Safari 17.4+. A custom property accepts any token stream
-at declaration time, so redeclaring `--spring` later is *not* a fallback — the
-invalidity only surfaces when `var()` substitutes into
-`transition-timing-function`, and that invalidates the whole `transition`
-declaration, giving no animation rather than a degraded one. The sampled spring
-is therefore gated behind `@supports (transition-timing-function: linear(0, 1))`,
-with an overshooting `cubic-bezier` as the base value.
+**`linear()` easing** needs Chrome/Edge 113+, Firefox 112+, Safari 17.4+. A
+custom property accepts any token stream at declaration time, so redeclaring
+`--spring` later is *not* a fallback — the invalidity only surfaces when `var()`
+substitutes into `transition-timing-function`, and that invalidates the whole
+`transition` declaration, giving no animation rather than a degraded one. The
+sampled spring is gated behind
+`@supports (transition-timing-function: linear(0, 1))`, with an overshooting
+`cubic-bezier` as the base value.
+
+**Page colours.** Two blend-mode layers are gone: a fixed `soft-light` grain
+overlay and a `multiply` paper texture on every page. Both were tuned for the
+original dark-green ground; measured against the light palette they moved the
+paper by **1/255 and 0/255** respectively — nothing. Blend modes composite
+against whatever backdrop the stacking context resolves to, and turn.js wraps
+every page in transformed containers that each create one, so they were a
+cross-browser liability buying no visual benefit. The paper texture is plain
+alpha now and resolves identically everywhere.
+
+That said: a reported yellow-paper difference between two browsers could **not**
+be reproduced by forcing different stacking contexts (0/255 variation either
+way), so the blend removal is a robustness change, not a confirmed fix for it.
+The likelier cause is a page-recolouring browser extension — Dark Reader and
+similar tint backgrounds while skipping `<img>`, which is exactly the signature
+of "paper yellow, illustration fine". `check-my-browser.html` detects those.
 
 ## Design system
 

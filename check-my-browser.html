@@ -118,6 +118,32 @@
   var major = parseInt((browser.match(/(\d+)/) || [0,0])[1], 10);
 
   var zoom = Math.round((window.outerWidth / window.innerWidth) * 100);
+
+  /* The paper colour as the browser actually paints it. Two machines reporting
+     different values here means something is recolouring the page. */
+  var probe = document.createElement('div');
+  probe.style.cssText = 'position:absolute;left:-9999px;width:10px;height:10px;background:#fffbf5';
+  document.body.appendChild(probe);
+  var paperSeen = getComputedStyle(probe).backgroundColor;
+  var filt = getComputedStyle(document.documentElement).filter;
+  document.body.removeChild(probe);
+  var paperOK = paperSeen.replace(/\s/g,'') === 'rgb(255,251,245)';
+
+  /* Extensions that recolour pages inject stylesheets. Dark Reader is the most
+     common; its light/sepia modes tint backgrounds but leave <img> alone, which
+     looks exactly like a colour-profile problem. */
+  var injected = [];
+  try {
+    if (document.querySelector('style.darkreader, [class*="darkreader"]')) injected.push('Dark Reader');
+    var sheets = document.styleSheets, extra = 0;
+    for (var si = 0; si < sheets.length; si++) {
+      if (/^(chrome|moz|safari)-extension:/.test(sheets[si].href || '')) extra++;
+    }
+    if (extra) injected.push(extra + ' extension stylesheet' + (extra > 1 ? 's' : ''));
+  } catch (e) {}
+  if (filt && filt !== 'none') injected.push('a CSS filter on the page');
+  if (window.matchMedia('(forced-colors: active)').matches) injected.push('Windows High Contrast');
+  var recoloured = !paperOK || injected.length > 0;
   var rows = [
     ['Reduced motion', reduced ? 'ON' : 'off', reduced ? 'no' : 'ok',
       reduced ? 'This is the big one. Windows: Settings → Accessibility (or Ease of Access) → Visual effects → turn ON "Animation effects". Then reload the page.' : ''],
@@ -136,7 +162,11 @@
       window.innerWidth < 900 ? 'Under 900px the book shows ONE page at a time instead of a two-page spread. That is intended, but it is a real difference between two laptops.' : ''],
     ['Browser zoom', (isFinite(zoom) ? zoom : 100) + '%', (isFinite(zoom) && Math.abs(zoom-100) > 15) ? 'warn' : 'ok',
       (isFinite(zoom) && Math.abs(zoom-100) > 15) ? 'Zoom changes the effective window width, which can flip the book into single-page mode. Ctrl+0 resets it.' : ''],
-    ['Screen', screen.width + ' × ' + screen.height + ' @ ' + (window.devicePixelRatio || 1) + 'x', 'ok', '']
+    ['Screen', screen.width + ' × ' + screen.height + ' @ ' + (window.devicePixelRatio || 1) + 'x', 'ok', ''],
+    ['Page colours',
+      recoloured ? 'MODIFIED' + (injected.length ? ' \u2014 ' + injected.join(', ') : ' \u2014 paper reads ' + paperSeen) : 'unmodified',
+      recoloured ? 'no' : 'ok',
+      recoloured ? 'Something on this computer is recolouring web pages. It tints backgrounds but skips images \u2014 which is exactly why the paper looks yellow here while the illustration looks normal. Open the site in an Incognito window (Ctrl+Shift+N) to confirm, then switch the extension off for this site.' : '']
   ];
 
   var tb = document.getElementById('rows');
@@ -153,7 +183,12 @@
   });
 
   var v = document.getElementById('verdict');
-  if (reduced) {
+  if (recoloured) {
+    v.className = 'verdict bad';
+    v.innerHTML = '<h2>Something is recolouring web pages here</h2>' +
+      '<p>' + (injected.length ? 'Detected: <b>' + injected.join(', ') + '</b>. ' : 'The page background is not the colour the site asked for. ') +
+      'This is almost certainly why the paper looks yellow on this computer and warm white on the other one \u2014 these tools tint backgrounds but leave images alone. Try an Incognito window (Ctrl+Shift+N): if the colours look right there, it is an extension.</p>';
+  } else if (reduced) {
     v.className = 'verdict bad';
     v.innerHTML = '<h2>Found it — reduced motion is switched on</h2>' +
       '<p>That single Windows setting disables the mascot’s wave, the staggered page entry and the button bounce, and shortens the page turn. It is why this laptop shows fewer features than the other one. The fix is in the table below.</p>';

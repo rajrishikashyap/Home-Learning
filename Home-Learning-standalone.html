@@ -1,6 +1,5 @@
 <!DOCTYPE html>
-<!-- Home Learning — standalone single-file build. Everything inlined; opens
-     from disk with no server. Identical to the hosted site. -->
+<!-- Home Learning — standalone single-file build. Everything inlined. -->
 
 <html lang="en"><head>
 <meta charset="UTF-8">
@@ -163,7 +162,6 @@
   --ease-out:cubic-bezier(.22,.61,.36,1);
   --ease-ms:260ms;
 
-  --grain:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/></filter><rect width='180' height='180' filter='url(%23n)' opacity='0.55'/></svg>");
 }
 
 /* The sampled spring only applies where linear() actually parses. A custom
@@ -222,19 +220,15 @@ body{
   /* warm, light ground: oat in the centre falling to blush at the edges */
   background:
     radial-gradient(1100px 700px at 50% -8%, #fffaf4 0%, var(--oat) 46%, var(--blush) 100%);
-  background-attachment:fixed;
   min-height:100vh;
   -webkit-font-smoothing:antialiased;
 }
-body::before{
-  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
-  background-image:var(--grain);
-  background-size:180px 180px;
-  background-repeat:repeat;
-  mix-blend-mode:soft-light;
-  opacity:.22;   /* a light ground needs far less grain than a dark one */
-}
-/* keep all real content above the grain layer (topbar keeps its own sticky/z-index) */
+/* The full-viewport grain overlay that used to live here is gone. It was a
+   mix-blend-mode: soft-light layer tuned for the original dark-green ground;
+   measured against the new light palette it moved the page colour by 0/255,
+   while costing a fixed composited layer the size of the window. */
+/* an explicit stacking order for the main surfaces, so nothing depends on
+   source order to sit above the page background */
 .book-stage,.portal-overlay,.modal,.wa{position:relative;z-index:1}
 a{text-decoration:none;color:inherit}
 button,input,select,textarea{font:inherit}
@@ -329,11 +323,17 @@ h1,h2,h3,.display{font-family:"Quicksand",system-ui,sans-serif;color:var(--sage-
 .page > *{position:relative;z-index:2}
 html.flipping .page:after{display:none}
 html.flipping .topbar{backdrop-filter:none}
-.page:after{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;opacity:.5;
+/* Paper tooth. Deliberately NOT a blend mode: mix-blend-mode composites against
+   whatever backdrop the stacking context resolves to, and turn.js wraps every
+   page in transformed containers that each create one. The result differed
+   between browsers — the paper came out honey-yellow in some and warm white in
+   others, while the plate image (z-index 2, above this layer) stayed correct in
+   both, which is what made it look like a colour-profile problem rather than a
+   compositing one. Plain alpha resolves identically everywhere. */
+.page:after{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
   background-image:
-    repeating-linear-gradient(0deg, rgba(120,100,60,.020) 0 2px, transparent 2px 4px),
-    radial-gradient(120% 80% at 50% 0%, rgba(255,255,255,.5), transparent 60%);
-  mix-blend-mode:multiply}
+    repeating-linear-gradient(0deg, rgba(120,100,60,.016) 0 2px, transparent 2px 4px),
+    radial-gradient(120% 80% at 50% 0%, rgba(255,255,255,.42), transparent 60%)}
 .page.left{border-right:1px solid rgba(150,130,80,.15)}
 .page.plate{padding:0;overflow:hidden;background:#c7bdb4}
 .page.plate img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
