@@ -126,42 +126,18 @@ html.flipping .topbar{backdrop-filter:none}
 .running-head span:first-child{white-space:nowrap}
 .folio{flex:none;order:99;text-align:center;padding:8px 0 14px;font-size:12px;color:#9a9078;font-style:italic}
 
-/* ---------- Page flip: CSS 3D leaves ---------- */
-/* one sheet = one .leaf (front = odd page, back = the next page). A turn is a
-   single rotateY on a single leaf: no DOM churn, no per-frame JS, no reflow. */
-.leaves{position:absolute;inset:0;perspective:2600px;border-radius:8px}
-.leaf{
-  position:absolute;top:0;left:50%;width:50%;height:100%;
-  transform-origin:0% 50%;transform-style:preserve-3d;
-  transform:rotateY(0deg);
-  transition:transform .82s cubic-bezier(.34,.03,.24,1);
-}
-.leaf.flipped{transform:rotateY(-180deg)}
-.leaf.moving{will-change:transform}
-.leaf.off{display:none}
-.leaf .face{position:absolute;inset:0;backface-visibility:hidden;overflow:hidden;background:var(--paper);pointer-events:none}
-/* only the face actually facing the reader, on the current spread, is hittable */
-.leaf:not(.flipped):not(.inert) .face.front{pointer-events:auto}
-.leaf.flipped:not(.inert) .face.back{pointer-events:auto}
-.leaf.inert .face{pointer-events:none}
-.leaf .face.back{transform:rotateY(180deg)}
-/* fold shading, only while a leaf is in the air */
-.leaf .face:before{content:"";position:absolute;inset:0;z-index:9;pointer-events:none;opacity:0;transition:opacity .28s ease}
-.leaf.moving .face.front:before{opacity:1;background:linear-gradient(90deg,rgba(58,44,20,.26),rgba(58,44,20,0) 46%)}
-.leaf.moving .face.back:before{opacity:1;background:linear-gradient(-90deg,rgba(58,44,20,.26),rgba(58,44,20,0) 46%)}
+/* ---------- Page flip: turn.js 3 ----------
+ * turn.js wraps every .page in a .turn-page-wrapper and positions both
+ * absolutely, so the book only has to supply the paper surface and the
+ * stacking context. The fold itself, its shadow and its gradients are drawn by
+ * the library into #turn-fwrappers, which lives outside the book's overflow. */
+.book .turn-page{background:var(--paper);overflow:hidden}
+.book .page{width:100%;height:100%}
+.book .turn-page-wrapper{backface-visibility:hidden}
 
-/* narrow screens: one page at a time, no fold */
+/* narrow screens: turn.js switches to display:'single' and the gutter goes */
 .book.single{width:min(560px,calc(100vw - 24px));height:min(78vh,660px)}
-.book.single .leaves{perspective:none}
-.book.single .leaf{left:0;width:100%;transform:none;transition:none}
-.book.single .leaf .face{backface-visibility:visible;display:none}
-/* single-page mode reuses the leaf's BACK face; without this reset it keeps
-   rotateY(180deg) from the 3D spread and every even page renders mirrored. */
-.book.single .leaf .face.back{transform:none}
-.book.single .leaf .face.show{display:block;animation:pageIn .34s ease;pointer-events:auto}
-.book.single .leaf .face:before{display:none}
 .book.single .spine{display:none}
-@keyframes pageIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:none}}
 
 /* ---------- Mascot (Sprout) — persistent navigator ---------- */
 .sprout{
@@ -420,7 +396,11 @@ table.mini th{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color
   border-right:2px solid currentColor;border-bottom:2px solid currentColor;opacity:.45;
   transform:translateX(-50%) rotate(45deg);animation:nudge 1.9s ease-in-out infinite}
 @keyframes nudge{0%,100%{transform:translateX(-50%) rotate(45deg) translateY(0)}50%{transform:translateX(-50%) rotate(45deg) translateY(3px)}}
-.turn-page .more-fade{display:none}
+/* hide the hint only on the leaf that is mid-fold: turn.js moves that page
+   into #turn-fwrappers, and a chevron on a page in flight reads as a glitch.
+   (This was `.turn-page .more-fade` — inert under the old engine, but turn.js
+   puts .turn-page on every page, which would have hidden all 20 of them.) */
+#turn-fwrappers .more-fade{display:none}
 @media (prefers-reduced-motion:reduce){.more-fade:after{animation:none}}
 
 /* keyboard focus */

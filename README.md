@@ -3,6 +3,8 @@
 Online English tuition for Classes 4–8 (CBSE and SEBA/ASSEB) — Guwahati.
 
 The site is a **book**: 20 designed pages you turn, rather than a page you scroll.
+The page-turn is [turn.js 3](https://www.turnjs.com/); scrolling the wheel reads
+the current page first and turns the leaf only once its text has bottomed out.
 
 ## Running locally
 
@@ -22,7 +24,7 @@ module and needs a real origin.
 index.html                  markup for all 20 pages
 assets/css/fonts.css        @font-face for the three self-hosted families
 assets/css/site.css         design system + book/flip CSS
-assets/js/book.js           flip engine, navigation, portal, lead form
+assets/js/book.js           turn.js setup, scroll gesture, portal, lead form
 assets/js/sprout-3d.js      "Sprout" mascot (three.js, ES module)
 assets/fonts/               Fraunces, Newsreader, Caveat (woff2)
 assets/img/                 logo + philosophy plate
@@ -72,8 +74,41 @@ A commercially-safe alternative is [`page-flip`](https://www.npmjs.com/package/p
 
 ## Fixed
 
-- **Mobile mirror bug.** In single-page mode (≤900px) the leaf's back face kept
-  its `rotateY(180deg)` from the two-page spread, so all 10 even-numbered pages
-  rendered as mirror writing. One rule in `site.css`
-  (`.book.single .leaf .face.back{transform:none}`) resets it. Verified across
-  all 20 pages at 390px.
+- **Mobile mirror bug.** In single-page mode (≤900px) the old CSS-3D engine
+  reused the leaf's back face without clearing the `rotateY(180deg)` it carries
+  in a two-page spread, so all 10 even-numbered pages rendered as mirror
+  writing. Fixed in the previous commit with a one-line reset; the bug is now
+  moot, as turn.js replaced that engine and handles single-page display itself.
+  Verified at 390px either way.
+
+## Page-turn engine
+
+turn.js owns `#flipbook` and its 21 `.page` children, wraps each in a
+`.turn-page-wrapper`, and keeps ~6 pages in the DOM at a time. `assets/js/book.js`
+supplies the glue:
+
+- **Sizing** — turn.js needs pixel dimensions, so `bookSize()` mirrors the CSS
+  clamps and feeds `turn('size', w, h)` on resize.
+- **Scroll gesture** — not part of turn.js, and not in the demo this was modelled
+  on. A wheel event scrolls whichever visible page still has text in that
+  direction; only when both have bottomed out does the accumulated delta call
+  `turn('next'|'previous')`.
+- **Corner size** — turn.js starts a drag-fold only within `cornerSize` of a
+  corner, so page centres stay free for the scrolling `.page-inner` panes. The
+  default 100px is shrunk to 28px on touch, where it would otherwise swallow
+  most of a swipe. turn.js rebuilds a page's flip when it re-enters range, which
+  resets this, so it is reapplied on every `turned`.
+- **Responsive** — `turn('display', 'single'|'double')` at the 900px breakpoint.
+
+### Cost
+
+turn.js animates with `setInterval(fn, 30)` and recomputes the fold geometry in
+JavaScript on every tick. One page turn measures **177 `transform()` calls and
+398 `css()` writes**. The CSS-3D engine it replaced did zero per-frame JS work —
+one class toggle, then the compositor interpolated a single `rotateY`.
+
+On desktop this is not visible; in headless testing turn.js actually measured
+*smoother* than the old engine, because software rasterising a 1180px
+`preserve-3d` surface is expensive. On low-end Android the ~400 main-thread
+style writes per turn are where it would show. This has not been measured on a
+real phone.

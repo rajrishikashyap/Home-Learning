@@ -1,129 +1,245 @@
-/* ---------- The book: page turning (CSS 3D leaves) ---------- */
-const bookEl = document.getElementById('flipbook');
+/* ---------- The book: page turning (turn.js 3) ----------
+ *
+ * turn.js owns #flipbook and its 21 .page children. It wraps each page in a
+ * .turn-page-wrapper, keeps ~6 pages in the DOM at a time, and drives the fold
+ * itself. Everything below is the glue: sizing, the scroll gesture, and keeping
+ * the dots / nav pill / mascot / overflow hint in step with turn.js's events.
+ *
+ * turn.js starts a drag-fold only within `cornerSize` of a corner (see
+ * _cornerActivated), so the middle of a page stays free for the scrolling
+ * .page-inner panes. On touch we shrink that zone further — at phone widths a
+ * 100px corner would swallow most of a swipe.
+ */
+const $book   = jQuery('#flipbook');
+const bookEl  = document.getElementById('flipbook');
 const pageEls = [...bookEl.querySelectorAll(':scope > .page')];
-const LAST = pageEls.length;                 // 21 = leading endpaper + 20 designed pages
-const SPREADS = Math.floor((LAST - 1) / 2);  // 10 designed spreads
-const prog = document.getElementById('progress');
-const reduce = window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+const LAST    = pageEls.length;                 // 21 = leading endpaper + 20 designed pages
+const SPREADS = Math.floor((LAST - 1) / 2);     // 10 designed spreads
+const prog    = document.getElementById('progress');
+const reduce  = window.matchMedia('(prefers-reduced-motion:reduce)').matches;
 const isNarrow = () => (window.innerWidth || document.documentElement.clientWidth || 1024) <= 900;
-let idx = 0, animating = false, pageNo = 2;
 
-const FLIP_MS = 820;
-const faces = pageEls.slice();
-if(faces.length % 2) faces.push(null);          // 22 faces -> 11 leaves
-const leafBox = document.createElement('div');
-leafBox.className = 'leaves';
-const leaves = [];
-for(let k = 0; k < faces.length / 2; k++){
-  const leaf = document.createElement('div'); leaf.className = 'leaf';
-  const front = document.createElement('div'); front.className = 'face front';
-  const back  = document.createElement('div'); back.className  = 'face back';
-  if(faces[2*k])   front.appendChild(faces[2*k]);
-  if(faces[2*k+1]) back.appendChild(faces[2*k+1]);
-  leaf.appendChild(front); leaf.appendChild(back);
-  leafBox.appendChild(leaf); leaves.push(leaf);
-}
-bookEl.insertBefore(leafBox, bookEl.firstChild);
-const MAXS = SPREADS;      /* spread s shows faces[2s-1] | faces[2s] */
-let cur = 1;               /* spread 1 = pages 2 & 3 */
-
+const FLIP_MS    = reduce ? 0 : 820;
+const CORNER_PX  = jQuery.isTouch ? 28 : 56;
 const SPREAD_LABELS = ['Cover & welcome','The idea','Roots & philosophy','Our story',
   'What we teach','How it works','Your tutor','Programme & fee','Principles','Questions & contact'];
-for(let i=0;i<SPREADS;i++){
-  const b=document.createElement('button');
-  b.type='button';
-  b.title=(i+1)+'. '+(SPREAD_LABELS[i]||'Spread '+(i+1));
-  b.setAttribute('aria-label',b.title);
-  b.onclick=()=>goto(i);
-  prog.appendChild(b);
+
+let bookInited = false, fitWidth = 0;
+
+/* spread i (0-based, as the nav pill uses) is turn.js page 2 + i*2 */
+const spreadToPage = i => 2 + Math.max(0, Math.min(SPREADS - 1, i)) * 2;
+const pageToSpread = p => Math.max(0, Math.min(SPREADS - 1, Math.floor((p - 2) / 2)));
+
+function measuredWidth(){ return window.innerWidth || document.documentElement.clientWidth || 0; }
+function viewport(){
+  return { vw: measuredWidth() || 1024,
+           vh: window.innerHeight || document.documentElement.clientHeight || 768 };
 }
 
-function curPage(){ return isNarrow() ? pageNo : 2 + (cur-1)*2 }
-function visiblePages(){
-  if(isNarrow()) return [pageEls[pageNo-1]].filter(Boolean);
-  return [faces[2*cur-1], faces[2*cur]].filter(Boolean);
+/* turn.js needs pixel dimensions, so the CSS clamps are mirrored here */
+function bookSize(){
+  const { vw, vh } = viewport();
+  return isNarrow()
+    ? { w: Math.min(560, vw - 24),  h: Math.min(Math.round(vh * 0.78), 660) }
+    : { w: Math.min(1180, vw - 200), h: Math.min(Math.round(vh * 0.80), 780) };
 }
-function activeScrollers(){ return visiblePages().map(p=>p.querySelector('.page-inner')).filter(Boolean) }
-function roomIn(el,dir){ return dir>0 ? (el.scrollHeight-el.clientHeight-el.scrollTop) : el.scrollTop }
-function canInnerScroll(dir){ for(const el of activeScrollers()){ if(roomIn(el,dir)>2) return el } return null }
+
+function curPage(){ return bookInited ? $book.turn('page') : 2; }
+function animating(){ return bookInited && $book.turn('animating'); }
+
+/* the pages on screen right now, as DOM nodes */
+function visiblePages(){
+  if(!bookInited) return [];
+  return $book.turn('view').filter(Boolean).map(n => pageEls[n - 1]).filter(Boolean);
+}
+function activeScrollers(){ return visiblePages().map(p => p.querySelector('.page-inner')).filter(Boolean); }
+function roomIn(el, dir){ return dir > 0 ? (el.scrollHeight - el.clientHeight - el.scrollTop) : el.scrollTop; }
+function canInnerScroll(dir){ for(const el of activeScrollers()){ if(roomIn(el, dir) > 2) return el; } return null; }
 
 /* a page whose text overflows gets a fade + chevron so it never looks cut off */
 function updateMore(){
-  pageEls.forEach(p=>p.classList.remove('has-more'));
-  visiblePages().forEach(p=>{
-    const inner=p.querySelector('.page-inner');
-    if(inner && (inner.scrollHeight-inner.clientHeight-inner.scrollTop)>8) p.classList.add('has-more');
+  pageEls.forEach(p => p.classList.remove('has-more'));
+  visiblePages().forEach(p => {
+    const inner = p.querySelector('.page-inner');
+    if(inner && (inner.scrollHeight - inner.clientHeight - inner.scrollTop) > 8) p.classList.add('has-more');
   });
+}
+
+/* turn.js rebuilds a page's flip when it re-enters the range, which resets the
+   corner size, so this is reapplied on every turn rather than once at init */
+function applyCornerSize(){
+  const data = $book.data();
+  if(!data || !data.pages) return;
+  for(const p in data.pages){
+    if(Object.prototype.hasOwnProperty.call(data.pages, p)){
+      try { data.pages[p].flip('options', { cornerSize: CORNER_PX }); } catch(err){ /* page not ready */ }
+    }
+  }
 }
 
 function paint(){
-  const p=curPage();
-  idx=Math.max(0,Math.min(SPREADS-1,Math.floor((p-2)/2)));
-  [...prog.children].forEach((b,k)=>b.classList.toggle('on',k===idx));
-  const prev=document.getElementById('prevBtn'), next=document.getElementById('nextBtn');
-  prev.disabled = p<=2;
-  // in double display turn.js reports the LEFT page of the final spread, so page never reaches LAST
-  next.disabled = isNarrow() ? (p>=LAST) : (idx>=SPREADS-1);
-  const np=document.getElementById('navpill');
-  if(np) [...np.children].forEach(b=>b.classList.toggle('on', +b.dataset.spread===idx));
+  if(!bookInited) return;
+  const page = curPage();
+  const idx  = pageToSpread(page);
+  [...prog.children].forEach((b, k) => b.classList.toggle('on', k === idx));
+  const prev = document.getElementById('prevBtn'), next = document.getElementById('nextBtn');
+  if(prev) prev.disabled = page <= 2;
+  if(next) next.disabled = isNarrow() ? (page >= LAST) : (idx >= SPREADS - 1);
+  const np = document.getElementById('navpill');
+  if(np) [...np.children].forEach(b => b.classList.toggle('on', +b.dataset.spread === idx));
   updateMore();
 }
 
-function showOnly(s){ leaves.forEach((L,k)=>L.classList.toggle('off', k<s-2 || k>s+1)) }
-function restack(s){
-  leaves.forEach((L,k)=>{
-    L.style.zIndex = k<s ? (k+1) : (leaves.length-k);
-    L.classList.toggle('inert', k!==s-1 && k!==s);   /* only the open spread is hittable */
-  });
-}
-
-function setSpread(ns, animate){
-  ns = Math.max(1, Math.min(MAXS, ns));
-  if(ns === cur || animating) return;
-  const from = cur; cur = ns;
-  const hero = ns > from ? ns-1 : ns;          /* the one leaf that moves */
-  /* settle every other leaf instantly, in a single reflow */
-  leaves.forEach((L,k)=>{ if(k!==hero) L.style.transition='none' });
-  leaves.forEach((L,k)=>{ if(k!==hero) L.classList.toggle('flipped', k<ns) });
-  void bookEl.offsetHeight;
-  leaves.forEach((L,k)=>{ if(k!==hero) L.style.transition='' });
-  showOnly(ns); restack(ns);
-  const L = leaves[hero];
-  L.style.zIndex = leaves.length + 10;
-  if(animate === false || reduce){
-    L.style.transition='none';
-    L.classList.toggle('flipped', hero<ns);
-    void bookEl.offsetHeight;
-    L.style.transition='';
-    restack(cur); showOnly(cur); paint();
-    return;
-  }
-  const land = () => {
-    L.removeEventListener('transitionend', onEnd);
-    clearTimeout(L._t); L.classList.remove('moving');
-    animating = false; flipEnd(); restack(cur); showOnly(cur); paint();
-  };
-  const onEnd = e => { if(e.target===L && e.propertyName==='transform') land(); };
-  animating = true; flipStart();
-  L.classList.add('moving');
-  L.addEventListener('transitionend', onEnd);
-  L._t = setTimeout(land, FLIP_MS + 240);
-  requestAnimationFrame(()=>L.classList.toggle('flipped', hero<ns));
-}
-
-function showPage(n){            /* narrow mode: one page at a time */
-  pageNo = Math.max(2, Math.min(LAST, n));
-  pageEls.forEach((p,i)=>p.parentElement.classList.toggle('show', i === pageNo-1));
-  paint();
-}
+/* ---------- public navigation (inline handlers in index.html use these) ---------- */
 function goto(i){
-  i=Math.max(0,Math.min(SPREADS-1,i));
-  if(isNarrow()) showPage(2+i*2); else setSpread(i+1, true);
+  if(!bookInited) return;
+  $book.turn('page', isNarrow() ? Math.max(2, spreadToPage(i)) : spreadToPage(i));
 }
 function turn(d){
-  if(isNarrow()){ showPage(pageNo+d); return; }
-  setSpread(cur+d, true);
+  if(!bookInited || animating()) return;
+  d > 0 ? $book.turn('next') : $book.turn('previous');
 }
+function showPage(n){
+  if(!bookInited) return;
+  $book.turn('page', Math.max(2, Math.min(LAST, n)));
+}
+
+/* ---------- build ---------- */
+function buildProgress(){
+  for(let i = 0; i < SPREADS; i++){
+    const b = document.createElement('button');
+    b.type  = 'button';
+    b.title = (i + 1) + '. ' + (SPREAD_LABELS[i] || 'Spread ' + (i + 1));
+    b.setAttribute('aria-label', b.title);
+    b.onclick = () => goto(i);
+    prog.appendChild(b);
+  }
+}
+
+function initBook(){
+  if(bookInited) return;
+  if(!measuredWidth()){ setTimeout(initBook, 50); return; }   /* wait for a real width */
+
+  const size = bookSize();
+  fitWidth = measuredWidth();
+
+  buildProgress();
+
+  $book.turn({
+    width:        size.w,
+    height:       size.h,
+    display:      isNarrow() ? 'single' : 'double',
+    page:         2,                      /* open on the cover, not the endpaper */
+    duration:     FLIP_MS || 1,
+    acceleration: true,
+    elevation:    50,                     /* the lift before the page swings */
+    gradients:    !jQuery.isTouch,        /* the fold shading costs too much on touch */
+    when: {
+      turning: function(){
+        document.documentElement.classList.add('flipping');
+      },
+      turned: function(){
+        document.documentElement.classList.remove('flipping');
+        applyCornerSize();
+        paint();
+      }
+    }
+  });
+
+  bookEl.classList.toggle('single', isNarrow());
+  bookInited = true;
+
+  pageEls.forEach(p => {
+    p.appendChild(Object.assign(document.createElement('div'), { className: 'more-fade' }));
+    const inner = p.querySelector('.page-inner');
+    if(inner) inner.addEventListener('scroll', updateMore, { passive: true });
+  });
+
+  applyCornerSize();
+  paint();
+  moveSprout();
+}
+
+function resizeBook(){
+  if(!bookInited){ initBook(); return; }
+  fitWidth = measuredWidth();
+  const want = isNarrow() ? 'single' : 'double';
+  if($book.turn('display') !== want){
+    $book.turn('display', want);
+    bookEl.classList.toggle('single', want === 'single');
+  }
+  const size = bookSize();
+  $book.turn('size', size.w, size.h);
+  moveSprout();
+  paint();
+}
+window.addEventListener('resize', resizeBook);
+
+/* A fit is only trustworthy if it came from a real, non-zero viewport width. */
+function refitIfStale(){
+  const w = measuredWidth();
+  if(w && Math.abs(w - fitWidth) > 1) resizeBook();
+}
+if(window.ResizeObserver){
+  const ro = new ResizeObserver(refitIfStale);
+  ro.observe(bookEl.parentElement || bookEl);
+  ro.observe(document.documentElement);
+}
+
+document.addEventListener('keydown', e => {
+  const portalOpen = document.getElementById('portal').classList.contains('open');
+  const modalOpen  = document.getElementById('modal').classList.contains('open');
+  if(e.key === 'Escape'){ if(modalOpen) closeModal(); else if(portalOpen) closePortal(); return; }
+  if(portalOpen || modalOpen) return;
+  if(/^(input|textarea|select)$/i.test(e.target.tagName)) return;
+  if(e.key === 'ArrowRight' || e.key === 'PageDown') turn(1);
+  if(e.key === 'ArrowLeft'  || e.key === 'PageUp')   turn(-1);
+});
+
+/* ---------- Wheel: read the page first, turn it only at the end ----------
+ * The pen drives turn.js from the keyboard and from dragging a corner; the
+ * scroll gesture is ours. A wheel event scrolls whichever visible page still
+ * has text left in the direction you are going, and only once both pages have
+ * bottomed out does the accumulated delta turn the leaf. */
+let wheelLock = false, wheelAccum = 0, wheelTimer = null;
+const THRESHOLD = 60;
+function onWheel(e){
+  if(!bookInited) return;
+  if(document.getElementById('portal').classList.contains('open')) return;
+  if(document.getElementById('modal').classList.contains('open')) return;
+
+  const dir = e.deltaY > 0 ? 1 : -1;
+  let scroller = e.target.closest ? e.target.closest('.page-inner') : null;
+  if(scroller && roomIn(scroller, dir) <= 2) scroller = null;
+  if(!scroller) scroller = canInnerScroll(dir);
+
+  if(scroller){
+    scroller.scrollTop += e.deltaY;
+    e.preventDefault();
+    updateMore();
+    wheelAccum = 0;
+    return;
+  }
+
+  e.preventDefault();
+  if(wheelLock || animating()){ wheelAccum = 0; return; }
+  wheelAccum += e.deltaY;
+  clearTimeout(wheelTimer);
+  wheelTimer = setTimeout(() => { wheelAccum = 0; }, 200);
+
+  if(Math.abs(wheelAccum) >= THRESHOLD){
+    turn(wheelAccum > 0 ? 1 : -1);
+    wheelAccum = 0;
+    wheelLock  = true;
+    setTimeout(() => { wheelLock = false; }, FLIP_MS + 180);
+  }
+}
+window.addEventListener('wheel', onWheel, { passive: false });
+
+if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initBook);
+else initBook();
+window.addEventListener('load', () => setTimeout(resizeBook, 80));
+
 
 /* ---------- Sprout the navigator: per-page mood + position ---------- */
 const sprout=document.getElementById('sprout');
@@ -209,15 +325,6 @@ function moveSprout(){
   if(window.Sprout3D) window.Sprout3D.face(side);
 }
 
-/* Viewport width can read 0 in an embedded pane that has not been measured
-   yet, so anything that depends on a real width waits for one. */
-function measuredWidth(){ return window.innerWidth || document.documentElement.clientWidth || 0; }
-function viewport(){
-  const vw = measuredWidth() || 1024;
-  const vh = window.innerHeight || document.documentElement.clientHeight || 768;
-  return {vw, vh};
-}
-let fitWidth = 0, bookInited = false;
 /* Some viewers throttle requestAnimationFrame to a standstill, so anything the
    book needs in order to exist is scheduled on rAF AND a timer — first one wins. */
 function soon(fn, ms){
@@ -226,127 +333,6 @@ function soon(fn, ms){
   if(window.requestAnimationFrame) requestAnimationFrame(run);
   setTimeout(run, ms || 32);
 }
-
-/* While a leaf is in the air the page texture (a mix-blend-mode layer) and the
-   topbar blur would have to be re-rasterised every frame — dropping them for
-   the duration is what keeps the turn fluid. */
-let flipTimer=0;
-function flipStart(){
-  document.documentElement.classList.add('flipping');
-  clearTimeout(flipTimer);
-  flipTimer=setTimeout(flipEnd, FLIP_MS + 400);
-}
-function flipEnd(){
-  clearTimeout(flipTimer);
-  document.documentElement.classList.remove('flipping');
-}
-
-function applyMode(){
-  const narrow = isNarrow();
-  bookEl.classList.toggle('single', narrow);
-  if(narrow){
-    leaves.forEach(L=>{ L.classList.remove('off','moving','flipped','inert'); L.style.zIndex=''; });
-    showPage(pageNo);
-  }else{
-    pageEls.forEach(p=>p.parentElement.classList.remove('show'));
-    cur = Math.max(1, Math.min(MAXS, Math.round(pageNo/2)));
-    leaves.forEach((L,k)=>{ L.style.transition='none'; L.classList.toggle('flipped', k<cur); });
-    void bookEl.offsetHeight;
-    leaves.forEach(L=>{ L.style.transition=''; });
-    restack(cur); showOnly(cur);
-  }
-  paint();
-}
-
-function initBook(){
-  if(bookInited) return;
-  if(!measuredWidth()){ soon(initBook, 50); return; }   /* wait for a real width */
-  fitWidth = measuredWidth();
-  bookInited = true;
-  applyMode();
-  pageEls.forEach(p=>{
-    p.appendChild(Object.assign(document.createElement('div'),{className:'more-fade'}));
-    const inner=p.querySelector('.page-inner');
-    if(inner) inner.addEventListener('scroll',updateMore,{passive:true});
-  });
-  paint();
-  soon(moveSprout);                    /* place Sprout from the sized book */
-}
-
-function resizeBook(){
-  if(!bookInited){ initBook(); return; }
-  fitWidth = measuredWidth();
-  if(bookEl.classList.contains('single') !== isNarrow()) applyMode();
-  /* Sprout's one constant spot is derived from the book's real rect */
-  soon(moveSprout);
-  updateMore();
-}
-window.addEventListener('resize',resizeBook);
-
-/* A fit is only trustworthy if it was computed from a real, non-zero viewport
-   width. Watch both the wrap and the document element, and re-fit whenever the
-   measured width differs from the one the current fit used — that also repairs
-   a first fit made against the fallback width. */
-function refitIfStale(){
-  const w = measuredWidth();
-  if(w && Math.abs(w - fitWidth) > 1) resizeBook();
-}
-if(window.ResizeObserver){
-  const ro = new ResizeObserver(refitIfStale);
-  ro.observe(bookEl.parentElement || bookEl);
-  ro.observe(document.documentElement);
-}
-/* last resort for viewers that report no width at all until after first paint */
-(function awaitWidth(tries){
-  if(measuredWidth()){ refitIfStale(); return; }
-  if(tries > 0) soon(()=>awaitWidth(tries-1), 50);
-})(120);
-
-document.addEventListener('keydown',e=>{
-  const portalOpen=document.getElementById('portal').classList.contains('open');
-  const modalOpen=document.getElementById('modal').classList.contains('open');
-  if(e.key==='Escape'){ if(modalOpen)closeModal(); else if(portalOpen)closePortal(); return; }
-  if(portalOpen||modalOpen) return;
-  if(/^(input|textarea|select)$/i.test(e.target.tagName)) return;
-  if(e.key==='ArrowRight'||e.key==='PageDown')turn(1);
-  if(e.key==='ArrowLeft'||e.key==='PageUp')turn(-1);
-});
-
-/* ---------- Wheel: read the page first, turn it only at the end ---------- */
-let wheelLock=false, wheelAccum=0, wheelTimer=null;
-const THRESHOLD=60;
-function onWheel(e){
-  if(!bookInited) return;
-  if(document.getElementById('portal').classList.contains('open')) return;
-  if(document.getElementById('modal').classList.contains('open')) return;
-  const dir=e.deltaY>0?1:-1;
-  let scroller = e.target.closest ? e.target.closest('.page-inner') : null;
-  if(scroller && roomIn(scroller,dir)<=2) scroller=null;
-  if(!scroller) scroller=canInnerScroll(dir);
-  if(scroller){
-    scroller.scrollTop += e.deltaY;
-    e.preventDefault();
-    updateMore();
-    wheelAccum=0;
-    return;
-  }
-  e.preventDefault();
-  if(wheelLock||animating){ wheelAccum=0; return; }
-  wheelAccum+=e.deltaY;
-  clearTimeout(wheelTimer);
-  wheelTimer=setTimeout(()=>{wheelAccum=0;},200);
-  if(Math.abs(wheelAccum)>=THRESHOLD){
-    turn(wheelAccum>0?1:-1);
-    wheelAccum=0; wheelLock=true;
-    setTimeout(()=>{wheelLock=false;},FLIP_MS+180);
-  }
-}
-window.addEventListener('wheel',onWheel,{passive:false});
-
-
-if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',initBook);
-else initBook();
-window.addEventListener('load',()=>setTimeout(()=>{resizeBook();},80));
 
 /* ---------- Portal ---------- */
 function openPortal(){document.getElementById('portal').classList.add('open');document.body.style.overflow='hidden'}
