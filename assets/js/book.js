@@ -85,7 +85,6 @@ function updateMore(){
    margin, so a stagger can never shift layout mid-turn. The index is written
    as a custom property; the easing itself lives in CSS. */
 function staggerIn(){
-  if(reduce) return;
   visiblePages().forEach(pg => {
     const inner = pg.querySelector('.page-inner');
     if(!inner) return;
@@ -340,20 +339,22 @@ const IDLE_MOODS=['smile','happy','curious','smile','happy'];
 let idleStep=0, idleTimer=null, waveTimer=null;
 
 function startIdleLife(){
-  if(reduce) return;
   clearInterval(idleTimer); clearInterval(waveTimer);
+  /* Expressions are not motion — swapping a path changes shape with no travel,
+     so they run under reduced motion too. Only the idle WAVE slows down there,
+     because it is the one part that repeats on a timer forever. */
   idleTimer=setInterval(()=>{
     if(document.hidden) return;
     setMood(IDLE_MOODS[idleStep++ % IDLE_MOODS.length], true);
-  }, 5200);
-  waveTimer=setInterval(()=>{ if(!document.hidden) waveOnce(); }, 14000);
+  }, reduce ? 7000 : 5200);
+  waveTimer=setInterval(()=>{ if(!document.hidden) waveOnce(); }, reduce ? 26000 : 14000);
 }
 
 /* Restart the drift clock whenever the reader turns a page, so the expression
    the spread asked for gets its full interval on screen. Without this the idle
    timer overwrites it mid-beat — the same two-drivers-fighting bug that was in
    the 3D mascot, just moved up a layer. */
-function bumpIdleLife(){ if(!reduce) startIdleLife(); }
+function bumpIdleLife(){ startIdleLife(); }
 
 function setEyes(kind){
   if(kind==='happyclosed'){
@@ -383,7 +384,9 @@ function setMood(name, idle){
 }
 function waveOnce(){
   if(window.Sprout3D){ window.Sprout3D.wave(); return; }
-  if(reduce) return;
+  /* Kept under reduced motion: CSS swaps in a gentler, slower swing (waveGentle)
+     rather than removing the greeting entirely. A hand waving hello is brief and
+     local — it is not the kind of large sweeping travel the setting is about. */
   sprout.classList.remove('waving'); void sprout.offsetWidth; sprout.classList.add('waving');
 }
 

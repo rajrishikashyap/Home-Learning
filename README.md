@@ -22,6 +22,7 @@ look at it; the served version is the source of truth.
 
 ```
 index.html                  markup for all 20 pages
+check-my-browser.html       standalone environment report (see below)
 assets/css/fonts.css        @font-face — Quicksand, Nunito Sans, Caveat
 assets/css/site.css         design tokens, motion primitives, components
 assets/js/book.js           turn.js setup, scroll gesture, portal, lead form
@@ -154,6 +155,41 @@ version silently did not.
 
 It also removes a second driver: the 3D build ran its own random `MOOD_CYCLE`
 timer that overrode whatever expression the current spread had just requested.
+
+## Why it can look different on two computers
+
+The site adapts to machine settings, and one of them changes a lot: **Windows
+"Animation effects" off** (Settings → Accessibility → Visual effects) reports
+`prefers-reduced-motion: reduce` to the browser.
+
+`check-my-browser.html` is a standalone page that reports what the current
+machine supports and what is switched on — open it on any computer that looks
+wrong. It sends nothing anywhere.
+
+What reduced motion now does, after a rethink:
+
+| kept | removed |
+|---|---|
+| Sprout's expressions (a path swap is not motion) | continuous idling — float, breathe, leaf sway |
+| the wave, as a gentler/slower swing | the spring's overshoot on hover/press |
+| staggered entry, as a pure fade | the 14 px rise that went with it |
+| a 280 ms page turn | the full 820 ms fold |
+
+The first pass over-applied it: `.sprout, .sprout *{animation:none!important}`
+froze the mascot completely, and `waveOnce()` / `startIdleLife()` / `staggerIn()`
+all returned early, so *every* feature on the list above vanished. The guidance
+is about vestibular triggers — parallax, zoom, large travel. A face changing
+shape, a fade, and a hand waving hello are none of those, and removing them left
+the page feeling broken rather than considerate.
+
+**`linear()` easing** is the other machine-dependent piece. It needs Chrome/Edge
+113+, Firefox 112+, or Safari 17.4+. A custom property accepts any token stream
+at declaration time, so redeclaring `--spring` later is *not* a fallback — the
+invalidity only surfaces when `var()` substitutes into
+`transition-timing-function`, and that invalidates the whole `transition`
+declaration, giving no animation rather than a degraded one. The sampled spring
+is therefore gated behind `@supports (transition-timing-function: linear(0, 1))`,
+with an overshooting `cubic-bezier` as the base value.
 
 ## Design system
 

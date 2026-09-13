@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Home Learning — browser check</title>
+<style>
+  :root{
+    --paper:#fffbf5; --oat:#f6ece0; --blush:#f8e2d5;
+    --ink:#3a3330; --ink-soft:#6b605a;
+    --peach:#ef8f6a; --peach-ink:#9e4b29; --peach-soft:#fbdac9;
+    --honey-soft:#fae3b8; --honey-ink:#8a5d18;
+    --sage:#7fa083; --sage-ink:#3d5742; --sage-soft:#dfeadf;
+    --line:#efe2d4;
+    --r:16px; --r-lg:22px;
+    --sh:0 1px 2px rgba(88,60,42,.05), 0 4px 10px rgba(88,60,42,.06), 0 10px 24px rgba(88,60,42,.05);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink);
+    background:radial-gradient(900px 600px at 50% -10%, #fffaf4, var(--oat) 50%, var(--blush));
+    background-attachment:fixed;min-height:100vh;padding:40px 20px 64px;
+  }
+  .wrap{max-width:760px;margin:0 auto}
+  h1{font-size:clamp(26px,4vw,34px);letter-spacing:-.01em;margin-bottom:6px}
+  .sub{color:var(--ink-soft);margin-bottom:28px}
+  .verdict{border-radius:var(--r-lg);padding:22px 24px;margin-bottom:26px;box-shadow:var(--sh);
+    background:#fff;border:1px solid var(--line)}
+  .verdict h2{font-size:19px;margin-bottom:6px}
+  .verdict p{color:var(--ink-soft);font-size:15px}
+  .verdict.bad{background:var(--peach-soft);border-color:rgba(158,75,41,.2)}
+  .verdict.bad h2{color:var(--peach-ink)}
+  .verdict.bad p{color:var(--peach-ink)}
+  .verdict.good{background:var(--sage-soft);border-color:rgba(61,87,66,.18)}
+  .verdict.good h2{color:var(--sage-ink)}
+  .verdict.good p{color:var(--sage-ink)}
+  table{width:100%;border-collapse:collapse;background:#fff;border-radius:var(--r-lg);
+    overflow:hidden;box-shadow:var(--sh);border:1px solid var(--line)}
+  th{text-align:left;font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--ink-soft);padding:14px 18px;background:var(--paper)}
+  td{padding:14px 18px;border-top:1px solid var(--line);font-size:15px;vertical-align:top}
+  td.k{font-weight:600;width:42%}
+  td.v{color:var(--ink-soft)}
+  .tag{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+  .ok{background:var(--sage-soft);color:var(--sage-ink)}
+  .warn{background:var(--honey-soft);color:var(--honey-ink)}
+  .no{background:var(--peach-soft);color:var(--peach-ink)}
+  .fix{margin-top:8px;font-size:14px;color:var(--ink);background:var(--paper);
+    border-left:3px solid var(--peach);padding:10px 14px;border-radius:8px}
+  .copy{margin-top:24px;display:flex;gap:12px;flex-wrap:wrap}
+  button{font:inherit;font-weight:700;cursor:pointer;border:0;padding:13px 22px;border-radius:var(--r);
+    background:var(--peach);color:#2a1a12;box-shadow:var(--sh);transition:transform .18s ease, filter .18s ease}
+  button:hover{transform:translateY(-1px);filter:brightness(1.04)}
+  button:active{transform:translateY(0) scale(.98)}
+  pre{margin-top:18px;background:#fff;border:1px solid var(--line);border-radius:var(--r);
+    padding:16px;font:13px/1.5 ui-monospace,Consolas,monospace;white-space:pre-wrap;color:var(--ink-soft)}
+  .mascot{display:block;margin:0 auto 10px;width:96px}
+  @media (max-width:560px){ td.k{width:auto} table,tbody,tr,td{display:block} th{display:none}
+    td{border-top:0;padding:10px 16px} tr{border-top:1px solid var(--line);padding:8px 0} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <svg class="mascot" viewBox="0 0 240 300" aria-hidden="true">
+    <ellipse cx="120" cy="286" rx="54" ry="9" fill="#1f3a33" opacity=".14"/>
+    <path d="M120 80V50" stroke="#6fa235" stroke-width="7" stroke-linecap="round" fill="none"/>
+    <path d="M119 62c-7-12-3-28 11-36 7 13 2 30-11 36Z" fill="#8cc247"/>
+    <path d="M121 68c8-11 22-15 34-9-6 12-21 17-34 9Z" fill="#6fae38"/>
+    <path d="M120 74C80 74 52 108 52 152c0 26 11 47 26 61-8 15-14 33-16 49-1 6 4 10 10 10h96c6 0 11-4 10-10-2-16-8-34-16-49 15-14 26-35 26-61 0-44-28-78-68-78Z" fill="#fbf6ea" stroke="#e2d4b7" stroke-width="1.6"/>
+    <ellipse cx="118" cy="146" rx="56" ry="58" fill="#fff3e6"/>
+    <ellipse cx="88" cy="161" rx="14" ry="9" fill="#f2b09d" opacity=".55"/>
+    <ellipse cx="150" cy="161" rx="14" ry="9" fill="#f2b09d" opacity=".55"/>
+    <ellipse cx="98" cy="142" rx="8.5" ry="11.5" fill="#2a2a26"/>
+    <ellipse cx="140" cy="142" rx="8.5" ry="11.5" fill="#2a2a26"/>
+    <circle cx="101" cy="138" r="2.8" fill="#fff"/><circle cx="143" cy="138" r="2.8" fill="#fff"/>
+    <path d="M104 161c8 12 24 12 32 0" stroke="#2a2a26" stroke-width="4" stroke-linecap="round" fill="none"/>
+  </svg>
+  <h1>Browser check</h1>
+  <p class="sub">This tells you why the site might look different on this computer than on another one. Nothing is sent anywhere — it all runs in your browser.</p>
+
+  <div id="verdict"></div>
+  <table><thead><tr><th>What</th><th>This computer</th></tr></thead><tbody id="rows"></tbody></table>
+
+  <div class="copy"><button id="copy">Copy this report</button></div>
+  <pre id="raw"></pre>
+</div>
+
+<script>
+(function(){
+  var supports = function(prop, val){ try { return CSS.supports(prop, val); } catch(e){ return false; } };
+  var reduced  = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var linearOK = supports('transition-timing-function','linear(0, 1)');
+
+  var webp = (function(){
+    var c = document.createElement('canvas');
+    return c.toDataURL && c.toDataURL('image/webp').indexOf('data:image/webp') === 0;
+  })();
+
+  var webgl = (function(){
+    try {
+      var c = document.createElement('canvas');
+      var g = c.getContext('webgl') || c.getContext('experimental-webgl');
+      if(!g) return 'not available';
+      var dbg = g.getExtension('WEBGL_debug_renderer_info');
+      return dbg ? (g.getParameter(dbg.UNMASKED_RENDERER_WEBGL) || 'available') : 'available';
+    } catch(e){ return 'not available'; }
+  })();
+
+  var ua = navigator.userAgent;
+  var browser = (function(){
+    var m;
+    if ((m = ua.match(/Edg\/([\d.]+)/)))      return 'Edge ' + m[1];
+    if ((m = ua.match(/OPR\/([\d.]+)/)))      return 'Opera ' + m[1];
+    if ((m = ua.match(/Firefox\/([\d.]+)/)))  return 'Firefox ' + m[1];
+    if ((m = ua.match(/Chrome\/([\d.]+)/)))   return 'Chrome ' + m[1];
+    if ((m = ua.match(/Version\/([\d.]+).*Safari/))) return 'Safari ' + m[1];
+    return 'Unknown';
+  })();
+  var major = parseInt((browser.match(/(\d+)/) || [0,0])[1], 10);
+
+  var zoom = Math.round((window.outerWidth / window.innerWidth) * 100);
+  var rows = [
+    ['Reduced motion', reduced ? 'ON' : 'off', reduced ? 'no' : 'ok',
+      reduced ? 'This is the big one. Windows: Settings → Accessibility (or Ease of Access) → Visual effects → turn ON "Animation effects". Then reload the page.' : ''],
+    ['Springy animations (CSS linear)', linearOK ? 'supported' : 'not supported', linearOK ? 'ok' : 'warn',
+      linearOK ? '' : 'Your browser is older than Chrome/Edge 113. Buttons will still work, just with a simpler bounce. Updating the browser restores the full spring.'],
+    ['Browser', browser, major && major < 100 ? 'warn' : 'ok',
+      major && major < 100 ? 'This is quite an old version. Update it for the full experience.' : ''],
+    ['Modern images (WebP)', webp ? 'supported' : 'NOT supported', webp ? 'ok' : 'no',
+      webp ? '' : 'The illustration on the philosophy page will not load. Update your browser.'],
+    ['Frosted glass (backdrop-filter)', supports('backdrop-filter','blur(4px)') || supports('-webkit-backdrop-filter','blur(4px)') ? 'supported' : 'not supported',
+      supports('backdrop-filter','blur(4px)') || supports('-webkit-backdrop-filter','blur(4px)') ? 'ok' : 'warn',
+      'Only affects the blur behind the top bar.'],
+    ['Graphics acceleration', webgl, webgl === 'not available' ? 'warn' : 'ok',
+      webgl === 'not available' ? 'Hardware acceleration looks disabled. Chrome: Settings → System → "Use graphics acceleration when available".' : ''],
+    ['Window size', window.innerWidth + ' × ' + window.innerHeight + ' px', window.innerWidth < 900 ? 'warn' : 'ok',
+      window.innerWidth < 900 ? 'Under 900px the book shows ONE page at a time instead of a two-page spread. That is intended, but it is a real difference between two laptops.' : ''],
+    ['Browser zoom', (isFinite(zoom) ? zoom : 100) + '%', (isFinite(zoom) && Math.abs(zoom-100) > 15) ? 'warn' : 'ok',
+      (isFinite(zoom) && Math.abs(zoom-100) > 15) ? 'Zoom changes the effective window width, which can flip the book into single-page mode. Ctrl+0 resets it.' : ''],
+    ['Screen', screen.width + ' × ' + screen.height + ' @ ' + (window.devicePixelRatio || 1) + 'x', 'ok', '']
+  ];
+
+  var tb = document.getElementById('rows');
+  rows.forEach(function(r){
+    var tr = document.createElement('tr');
+    var td1 = document.createElement('td'); td1.className='k'; td1.textContent = r[0];
+    var td2 = document.createElement('td'); td2.className='v';
+    var tag = document.createElement('span');
+    tag.className = 'tag ' + r[2];
+    tag.textContent = r[1];
+    td2.appendChild(tag);
+    if (r[3]) { var f=document.createElement('div'); f.className='fix'; f.textContent=r[3]; td2.appendChild(f); }
+    tr.appendChild(td1); tr.appendChild(td2); tb.appendChild(tr);
+  });
+
+  var v = document.getElementById('verdict');
+  if (reduced) {
+    v.className = 'verdict bad';
+    v.innerHTML = '<h2>Found it — reduced motion is switched on</h2>' +
+      '<p>That single Windows setting disables the mascot’s wave, the staggered page entry and the button bounce, and shortens the page turn. It is why this laptop shows fewer features than the other one. The fix is in the table below.</p>';
+  } else if (!linearOK) {
+    v.className = 'verdict bad';
+    v.innerHTML = '<h2>Your browser is a little old</h2>' +
+      '<p>Animations will run in a simplified form. Updating Chrome or Edge restores the full motion.</p>';
+  } else {
+    v.className = 'verdict good';
+    v.innerHTML = '<h2>This computer looks fine</h2>' +
+      '<p>Everything the site needs is supported and reduced motion is off. If the site still looks wrong here, it is almost certainly a cached old copy — press <b>Ctrl+Shift+R</b> on the site to force a fresh load.</p>';
+  }
+
+  var report = rows.map(function(r){ return r[0] + ': ' + r[1]; }).join('\n') + '\n' + ua;
+  document.getElementById('raw').textContent = report;
+  document.getElementById('copy').addEventListener('click', function(){
+    var btn = this;
+    function done(){ btn.textContent='Copied ✓'; setTimeout(function(){ btn.textContent='Copy this report'; }, 1800); }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(report).then(done, done);
+    else { var t=document.createElement('textarea'); t.value=report; document.body.appendChild(t); t.select();
+           try{ document.execCommand('copy'); }catch(e){} document.body.removeChild(t); done(); }
+  });
+})();
+</script>
+</body></html>

@@ -1,7 +1,6 @@
 <!DOCTYPE html>
-<!-- Home Learning — standalone single-file build. Fonts, artwork, jQuery and
-     turn.js are inlined, so this opens straight from disk with no server.
-     Identical to the hosted site: both run the SVG mascot. -->
+<!-- Home Learning — standalone single-file build. Everything inlined; opens
+     from disk with no server. Identical to the hosted site. -->
 
 <html lang="en"><head>
 <meta charset="UTF-8">
@@ -154,12 +153,26 @@
      into linear(). zeta = 0.42, so it overshoots ~23% and settles back —
      that overshoot is the "squish". --ease-out is for things that should
      not bounce (fades, page chrome). */
-  --spring:linear(0, 0.0408, 0.1476, 0.2973, 0.4685, 0.6429, 0.8063, 0.9482, 1.0624, 1.1461, 1.1996, 1.2255, 1.228, 1.212, 1.183, 1.1461, 1.1061, 1.0667, 1.031, 1.0008, 0.9773, 0.9608, 0.9511, 0.9474, 0.9487, 0.9537, 0.9612, 0.97, 0.9793, 0.988, 0.9958, 1.0021, 1.0069, 1.01, 1.0117, 1.0121, 1.0114, 1.01, 1.0081, 1.006, 1.0039, 1.002, 1.0004, 0.999, 1);
+  /* A cubic-bezier that overshoots, for browsers without linear(). Declared
+     FIRST so the linear() below wins wherever it is supported. Without this an
+     older browser resolves --spring to an invalid timing function, which makes
+     the entire `transition` declaration invalid at computed-value time — not a
+     degraded animation, no animation at all. */
+  --spring:cubic-bezier(.34,1.56,.64,1);
   --spring-ms:620ms;
   --ease-out:cubic-bezier(.22,.61,.36,1);
   --ease-ms:260ms;
 
   --grain:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/></filter><rect width='180' height='180' filter='url(%23n)' opacity='0.55'/></svg>");
+}
+
+/* The sampled spring only applies where linear() actually parses. A custom
+   property accepts any token stream at declaration time, so redeclaring it
+   later is NOT a fallback: the invalidity only surfaces when var() substitutes
+   into transition-timing-function, and that invalidates the whole `transition`
+   declaration. @supports is the only thing that genuinely gates it. */
+@supports (transition-timing-function: linear(0, 1)) {
+  :root{ --spring:linear(0, 0.0408, 0.1476, 0.2973, 0.4685, 0.6429, 0.8063, 0.9482, 1.0624, 1.1461, 1.1996, 1.2255, 1.228, 1.212, 1.183, 1.1461, 1.1061, 1.0667, 1.031, 1.0008, 0.9773, 0.9608, 0.9511, 0.9474, 0.9487, 0.9537, 0.9612, 0.97, 0.9793, 0.988, 0.9958, 1.0021, 1.0069, 1.01, 1.0117, 1.0121, 1.0114, 1.01, 1.0081, 1.006, 1.0039, 1.002, 1.0004, 0.999, 1); }
 }
 
 /* ============================================================
@@ -185,13 +198,20 @@
   transition:opacity 620ms var(--ease-out), transform 620ms var(--ease-out)}
 #flipbook.ready{opacity:1;transform:none}
 
+/* Reduced motion removes the LARGE motion — sweeping translations, the spring's
+   overshoot, continuous idling — and keeps the small local cues. The guidance is
+   about vestibular triggers: parallax, zoom, big travel. A face changing shape,
+   a 14px fade-in, a hand waving hello are none of those, and stripping them left
+   the page feeling broken rather than considerate. */
 @media (prefers-reduced-motion:reduce){
   .tactile{transition:box-shadow 120ms linear, background-color 120ms linear, color 120ms linear}
   .tactile:hover,.tactile:active{transform:none}
-  .stagger > *{animation:none}
-  #flipbook{transition:opacity 200ms linear}
+  /* entry keeps the fade, drops the travel */
+  .stagger > *{animation:fadeIn 320ms ease both}
+  #flipbook{transition:opacity 240ms linear}
   #flipbook,#flipbook.ready{transform:none}
 }
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
 
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth;overflow-x:hidden}
@@ -416,7 +436,21 @@ html.flipping .topbar{backdrop-filter:none}
 .sprout .hopper.hop{animation:hop .6s ease}
 @keyframes hop{0%,100%{transform:translateY(0) scale(1)}30%{transform:translateY(-16px) scale(1.04)}}
 @media (prefers-reduced-motion:reduce){
-  .sprout,.sprout *{animation:none!important;transition:opacity .3s!important}
+  /* stop the continuous idling — floating, breathing, swaying leaves — which is
+     the part that runs forever and is genuinely worth suppressing */
+  .sprout .idle,.sprout #s-torso,.sprout #s-leaves,.sprout #s-leafL,.sprout #s-leafR{
+    animation:none!important;transform:none!important}
+  /* keep the blink and keep the wave: both are brief, local, and they are the
+     whole reason the mascot reads as alive rather than as a sticker */
+  .sprout.waving #s-hand{animation:waveGentle 1.6s ease-in-out}
+  .sprout.waving .idle{animation:none}
+  #s-eyes{animation:blink 6s infinite}
+}
+@keyframes waveGentle{
+  0%,100%{transform:rotate(0)}
+  25%{transform:rotate(-18deg)}
+  50%{transform:rotate(2deg)}
+  75%{transform:rotate(-14deg)}
 }
 
 /* turn controls */
@@ -3220,7 +3254,6 @@ function updateMore(){
    margin, so a stagger can never shift layout mid-turn. The index is written
    as a custom property; the easing itself lives in CSS. */
 function staggerIn(){
-  if(reduce) return;
   visiblePages().forEach(pg => {
     const inner = pg.querySelector('.page-inner');
     if(!inner) return;
@@ -3475,20 +3508,22 @@ const IDLE_MOODS=['smile','happy','curious','smile','happy'];
 let idleStep=0, idleTimer=null, waveTimer=null;
 
 function startIdleLife(){
-  if(reduce) return;
   clearInterval(idleTimer); clearInterval(waveTimer);
+  /* Expressions are not motion — swapping a path changes shape with no travel,
+     so they run under reduced motion too. Only the idle WAVE slows down there,
+     because it is the one part that repeats on a timer forever. */
   idleTimer=setInterval(()=>{
     if(document.hidden) return;
     setMood(IDLE_MOODS[idleStep++ % IDLE_MOODS.length], true);
-  }, 5200);
-  waveTimer=setInterval(()=>{ if(!document.hidden) waveOnce(); }, 14000);
+  }, reduce ? 7000 : 5200);
+  waveTimer=setInterval(()=>{ if(!document.hidden) waveOnce(); }, reduce ? 26000 : 14000);
 }
 
 /* Restart the drift clock whenever the reader turns a page, so the expression
    the spread asked for gets its full interval on screen. Without this the idle
    timer overwrites it mid-beat — the same two-drivers-fighting bug that was in
    the 3D mascot, just moved up a layer. */
-function bumpIdleLife(){ if(!reduce) startIdleLife(); }
+function bumpIdleLife(){ startIdleLife(); }
 
 function setEyes(kind){
   if(kind==='happyclosed'){
@@ -3518,7 +3553,9 @@ function setMood(name, idle){
 }
 function waveOnce(){
   if(window.Sprout3D){ window.Sprout3D.wave(); return; }
-  if(reduce) return;
+  /* Kept under reduced motion: CSS swaps in a gentler, slower swing (waveGentle)
+     rather than removing the greeting entirely. A hand waving hello is brief and
+     local — it is not the kind of large sweeping travel the setting is about. */
   sprout.classList.remove('waving'); void sprout.offsetWidth; sprout.classList.add('waving');
 }
 
