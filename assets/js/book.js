@@ -31,6 +31,15 @@ const SPREAD_LABELS = ['Cover & welcome','The idea','Roots & philosophy','Our st
 let bookInited = false, fitWidth = 0;
 
 /* spread i (0-based, as the nav pill uses) is turn.js page 2 + i*2 */
+/* Page 1 is the blank leading endpaper. It is not content — it exists so the
+   cover lands on an EVEN page, which is what puts it on the left of its spread.
+   turn.js pairs even pages leftward, so without it every designed pair in the
+   book would re-pair one page out (the plate would face the wrong text, the
+   portrait the wrong bio). It stays in the DOM and is never reachable: FIRST is
+   the floor for every navigation path, including the wheel and the keyboard,
+   which previously bypassed the disabled prev button and landed on view [0,1]
+   — a half-empty spread with nothing in it. */
+const FIRST = 2;
 const spreadToPage = i => 2 + Math.max(0, Math.min(SPREADS - 1, i)) * 2;
 const pageToSpread = p => Math.max(0, Math.min(SPREADS - 1, Math.floor((p - 2) / 2)));
 
@@ -45,7 +54,7 @@ function bookSize(){
   const { vw, vh } = viewport();
   return isNarrow()
     ? { w: Math.min(560, vw - 24),  h: Math.min(Math.round(vh * 0.78), 660) }
-    : { w: Math.min(1180, vw - 200), h: Math.min(Math.round(vh * 0.80), 780) };
+    : { w: Math.min(1120, vw - 240), h: Math.min(Math.round(vh * 0.80), 780) };
 }
 
 function curPage(){ return bookInited ? $book.turn('page') : 2; }
@@ -126,15 +135,17 @@ function paint(){
 /* ---------- public navigation (inline handlers in index.html use these) ---------- */
 function goto(i){
   if(!bookInited) return;
-  $book.turn('page', isNarrow() ? Math.max(2, spreadToPage(i)) : spreadToPage(i));
+  $book.turn('page', Math.max(FIRST, spreadToPage(i)));
 }
 function turn(d){
   if(!bookInited || animating()) return;
+  if(d < 0 && curPage() <= FIRST) return;            /* never open the endpaper */
+  if(d > 0 && !isNarrow() && pageToSpread(curPage()) >= SPREADS - 1) return;
   d > 0 ? $book.turn('next') : $book.turn('previous');
 }
 function showPage(n){
   if(!bookInited) return;
-  $book.turn('page', Math.max(2, Math.min(LAST, n)));
+  $book.turn('page', Math.max(FIRST, Math.min(LAST, n)));
 }
 
 /* ---------- build ---------- */
@@ -162,7 +173,7 @@ function initBook(){
     width:        size.w,
     height:       size.h,
     display:      isNarrow() ? 'single' : 'double',
-    page:         2,                      /* open on the cover, not the endpaper */
+    page:         FIRST,                  /* open on the cover, not the endpaper */
     duration:     FLIP_MS,
     acceleration: true,
     elevation:    50,                     /* the lift before the page swings */
@@ -176,6 +187,7 @@ function initBook(){
         applyCornerSize();
         syncPageA11y();
         setMood(PLAN[pageToSpread(page)] || 'happy');
+        bumpIdleLife();
         staggerIn();
         paint();
       }
@@ -202,6 +214,8 @@ function initBook(){
      the cover appeared. The pages now carry their own paper colour (see
      site.css) and the book fades up only once it is actually built. */
   requestAnimationFrame(() => { bookEl.classList.add('ready'); staggerIn(); });
+  startIdleLife();                     /* blinks, mood drift and the odd wave */
+  setTimeout(waveOnce, 900);           /* say hello once the book has settled */
 }
 
 function resizeBook(){
@@ -293,18 +307,53 @@ const sBrows=document.getElementById('s-brows');
 const sBrowL=document.getElementById('s-browL');
 const sBrowR=document.getElementById('s-browR');
 
+/* ---------- Sprout's feelings ----------
+ * Three expressions, plus a wave. They are deliberately few: a mascot that
+ * cycles through eight subtly-different faces reads as noise, whereas three
+ * distinct ones read as a character with moods.
+ *
+ *   happy    — open grin, bright round eyes. Arrivals and good news.
+ *   smile    — soft closed curve, eyes creased shut. The resting face.
+ *   curious  — small round mouth, brows up, eyes wide. Questions and lists.
+ *
+ * `wave` is happy plus the arm, used to say hello.
+ */
 const MOODS={
-  happy:  {mouth:'M107 164c6 8 18 8 24 0', brows:0, eyes:'normal'},
-  wave:   {mouth:'M107 164c6 8 18 8 24 0', brows:0, eyes:'normal', wave:true},
-  curious:{mouth:'M112 166c4 3 10 3 14 0', brows:1, browL:'M88 122c6-4 13-4 19 2', browR:'M131 129c6-5 14-4 19 2', eyes:'wide'},
-  proud:  {mouth:'M106 162c7 10 21 10 28 0', brows:1, browL:'M88 124c6-4 13-4 19 0', browR:'M131 124c6-4 13-4 19 0', eyes:'happyclosed'},
-  calm:   {mouth:'M109 165c5 4 13 4 18 0', brows:0, eyes:'normal'},
-  think:  {mouth:'M109 166h20', brows:1, browL:'M88 124c6-3 13-3 19 1', browR:'M131 125c6-4 13-4 19 0', eyes:'normal'}
+  happy:  {mouth:'M104 161c8 12 24 12 32 0', brows:0, eyes:'normal',      tilt:0},
+  smile:  {mouth:'M109 164c5 6 13 6 18 0',   brows:0, eyes:'happyclosed', tilt:0},
+  curious:{mouth:'M115 163a5.5 5.5 0 1 0 11 0a5.5 5.5 0 1 0 -11 0',
+           brows:1, browL:'M87 121c6-5 14-4 20 2', browR:'M130 128c6-6 15-5 20 1',
+           eyes:'wide', tilt:-5},
+  wave:   {mouth:'M104 161c8 12 24 12 32 0', brows:0, eyes:'normal', tilt:0, wave:true}
 };
-/* Sprout's expression for each of the 10 spreads. The `side`/`vy` fields this
-   list used to carry are gone: Sprout keeps one spot in the roomier margin now,
-   so only the mood still means anything. Applied from turn.js's `turned`. */
-const PLAN=['wave','calm','proud','curious','happy','think','proud','happy','calm','wave'];
+
+/* One expression per spread. Arrivals wave; list-heavy spreads look curious;
+   the rest rest. Applied from turn.js's `turned` event. */
+const PLAN=['wave','smile','happy','curious','curious','smile','happy','smile','curious','wave'];
+
+/* Idle drift. The page only changes when the reader turns it, which can be
+   minutes — so between turns Sprout works through the same three moods on its
+   own slow clock, and waves now and then. One driver, not two: the 3D mascot
+   used to run a competing random cycle of its own that overrode whatever the
+   page had just asked for. */
+const IDLE_MOODS=['smile','happy','curious','smile','happy'];
+let idleStep=0, idleTimer=null, waveTimer=null;
+
+function startIdleLife(){
+  if(reduce) return;
+  clearInterval(idleTimer); clearInterval(waveTimer);
+  idleTimer=setInterval(()=>{
+    if(document.hidden) return;
+    setMood(IDLE_MOODS[idleStep++ % IDLE_MOODS.length], true);
+  }, 5200);
+  waveTimer=setInterval(()=>{ if(!document.hidden) waveOnce(); }, 14000);
+}
+
+/* Restart the drift clock whenever the reader turns a page, so the expression
+   the spread asked for gets its full interval on screen. Without this the idle
+   timer overwrites it mid-beat — the same two-drivers-fighting bug that was in
+   the 3D mascot, just moved up a layer. */
+function bumpIdleLife(){ if(!reduce) startIdleLife(); }
 
 function setEyes(kind){
   if(kind==='happyclosed'){
@@ -319,14 +368,18 @@ function setEyes(kind){
       '<circle cx="143" cy="138" r="2.8" fill="#fff"/>';
   }
 }
-function setMood(name){
+function setMood(name, idle){
   const m=MOODS[name]||MOODS.happy;
   sMouth.setAttribute('d',m.mouth);
   sBrows.style.opacity=m.brows?1:0;
   if(m.brows){ if(m.browL)sBrowL.setAttribute('d',m.browL); if(m.browR)sBrowR.setAttribute('d',m.browR); }
   setEyes(m.eyes);
+  /* a curious head-tilt reads as thinking; the others sit straight */
+  sprout.style.setProperty('--tilt', (m.tilt||0)+'deg');
   if(window.Sprout3D) window.Sprout3D.mood(name);
   if(m.wave) waveOnce();
+  /* arriving on a new spread is a greeting, whatever the mood asks for */
+  if(!idle && !m.wave) waveOnce();
 }
 function waveOnce(){
   if(window.Sprout3D){ window.Sprout3D.wave(); return; }
@@ -343,7 +396,7 @@ function moveSprout(){
   const vp=viewport(), vw=vp.vw, vh=vp.vh;
   const r=bookEl.getBoundingClientRect();
   if(r.width < 200){ sprout.style.opacity=0; return; }   /* book not sized yet */
-  const PAD=13, MINW=54, MAXW = vw<1100 ? 104 : 132;
+  const PAD=10, MINW=54, MAXW = vw<1100 ? 112 : 150;
   const gutL=r.left, gutR=vw-r.right;
   const side = gutL >= gutR ? 'l' : 'r';          /* whichever margin is roomier */
   const own = side==='l' ? gutL : gutR;

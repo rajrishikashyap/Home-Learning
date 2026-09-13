@@ -93,22 +93,23 @@ const leafR = new THREE.Mesh(LEAF, leafA); leafR.rotation.set(-0.25, 0.35, -0.55
 const leafL = new THREE.Mesh(LEAF, leafB); leafL.scale.x = -1; leafL.rotation.set(-0.25, -0.35, 0.7); leaves.add(leafL);
 
 /* ---------- state ---------- */
+/* Matches the three expressions in book.js — happy, smile, curious — plus the
+   wave. `tilt` leans the head, which is what sells "curious" in 3D where there
+   are no eyebrows to speak of at this size. */
 const MOOD3 = {
-  happy:  {mouth:'smile', brows:false, eye:1,    smileW:1},
-  wave:   {mouth:'smile', brows:false, eye:1,    smileW:1.05},
-  calm:   {mouth:'smile', brows:false, eye:0.9,  smileW:0.8},
-  proud:  {mouth:'smile', brows:true,  eye:0.95, smileW:1.2, browTilt:0.16, browY:0.2},
-  curious:{mouth:'oh',    brows:true,  eye:1.2,  smileW:1, browTilt:0.05, browY:0.22},
-  think:  {mouth:'line',  brows:true,  eye:0.95, smileW:1, browTilt:0.3,  browY:0.16}
+  happy:  {mouth:'smile', brows:false, eye:1,    smileW:1.15, tilt:0},
+  smile:  {mouth:'smile', brows:false, eye:0.55, smileW:0.85, tilt:0},
+  curious:{mouth:'oh',    brows:true,  eye:1.25, smileW:1, browTilt:0.06, browY:0.22, tilt:0.13},
+  wave:   {mouth:'smile', brows:false, eye:1,    smileW:1.2,  tilt:0}
 };
 let mood = MOOD3.happy;
 let eyeTarget = 1, eyeNow = 1, blinkAt = 2 + Math.random()*3, blinkP = 0;
 let waveAmt = 0, waveHold = 0, nextIdleWave = 5 + Math.random()*4;
 let hopV = 0, hopY = 0, yaw = 0, yawTarget = 0;
-/* expressions drift on their own schedule; mostly cheerful, with the odd
-   curious or thoughtful beat, and a wave every so often */
-const MOOD_CYCLE = ['happy','calm','proud','curious','happy','think','calm','wave'];
-let moodStep = 0, nextMood = 5 + Math.random()*4;
+/* No internal mood cycle. book.js owns which expression Sprout wears — per
+   spread, and drifting between turns — and used to be fought by a random
+   timer in here that overrode it every few seconds. One driver. */
+let headTilt = 0, headTiltTarget = 0;
 
 function applyMood(name){
   mood = MOOD3[name] || MOOD3.happy;
@@ -123,6 +124,7 @@ function applyMood(name){
     browR.rotation.z =  (mood.browTilt || 0);
   }
   eyeTarget = mood.eye;
+  headTiltTarget = mood.tilt || 0;
   /* with the loop stopped there is no next frame to pick this up, so draw it */
   if(reduceM && typeof renderer !== 'undefined') renderer.render(scene, camera);
 }
@@ -186,17 +188,13 @@ function tick(dt){
   eyeL.scale.y = eyeR.scale.y = 0.082 * eyeNow * lid;
 
   /* expressions on their own timer, independent of the book */
-  nextMood -= dt;
-  if(nextMood <= 0){
-    const name = MOOD_CYCLE[moodStep++ % MOOD_CYCLE.length];
-    applyMood(name);
-    if(name === 'wave') waveHold = 1.9;
-    nextMood = 6 + Math.random()*5;
-  }
+  /* ease the head toward whatever tilt the current mood asks for */
+  headTilt += (headTiltTarget - headTilt) * Math.min(1, dt * 5);
+  head.rotation.z = headTilt;
 
   /* the hand: idle sway always, a real wave now and then */
   nextIdleWave -= dt;
-  if(nextIdleWave <= 0 && waveHold <= 0){ waveHold = 1.5; nextIdleWave = 7 + Math.random() * 5; }
+  if(nextIdleWave <= 0 && waveHold <= 0){ waveHold = 1.8; nextIdleWave = 12 + Math.random() * 6; }
   if(waveHold > 0) waveHold -= dt;
   waveAmt += ((waveHold > 0 ? 1 : 0) - waveAmt) * Math.min(1, dt * 6);
 

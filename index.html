@@ -487,9 +487,15 @@
   </div>
 </div>
 
-<script>window.__resources = { three: new URL("vendor/three.module.js", document.baseURI).href };</script>
+<!-- The mascot runs as inline SVG (see #sprout below), not three.js.
+     At its rendered size (~110px) the WebGL build's face was illegible: the
+     mouth geometry did not resolve at all for happy/smile, leaving a blob with
+     two dots, while the SVG reads cleanly at any size, costs 0 KB against
+     three.js's 1.27 MB, and honours prefers-reduced-motion.
+     To restore the 3D version, uncomment both lines below. -->
+<!-- <script>window.__resources = { three: new URL("vendor/three.module.js", document.baseURI).href };</script> -->
 <script src="vendor/jquery.min.js"></script>
 <script src="vendor/turn.js"></script>
 <script src="assets/js/book.js"></script>
-<script type="module" src="assets/js/sprout-3d.js"></script>
+<!-- <script type="module" src="assets/js/sprout-3d.js"></script> -->
 </body></html>

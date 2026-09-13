@@ -15,8 +15,8 @@ python3 -m http.server 8000
 # http://localhost:8000
 ```
 
-Opening `index.html` over `file://` will not work — the mascot loads as an ES
-module and needs a real origin.
+`Home-Learning-standalone.html` opens straight from disk if you just want to
+look at it; the served version is the source of truth.
 
 ## Layout
 
@@ -25,7 +25,7 @@ index.html                  markup for all 20 pages
 assets/css/fonts.css        @font-face — Quicksand, Nunito Sans, Caveat
 assets/css/site.css         design tokens, motion primitives, components
 assets/js/book.js           turn.js setup, scroll gesture, portal, lead form
-assets/js/sprout-3d.js      "Sprout" mascot (three.js, ES module)
+assets/js/sprout-3d.js      retired 3D mascot (disabled — see The mascot)
 assets/fonts/               Quicksand, Nunito Sans, Caveat (variable woff2)
 assets/img/                 logo + philosophy plate
 vendor/                     third-party libraries
@@ -72,10 +72,21 @@ Open by choice, not by oversight:
 |---|---|
 | Parent portal is a mockup | login accepts anything, data is fictional; now labelled "Preview — not live" |
 | turn.js licence | see above — unresolved for a commercial site |
-| `vendor/three.module.js` is 1.27 MB | the 3D mascot; the SVG mascot it hides is 0 KB and arguably cuter |
+| `vendor/three.module.js` is 1.27 MB | no longer loaded; kept so the 3D mascot can be restored |
 
 ## Fixed
 
+- **Blank spread reachable by scrolling up.** Page 1 is the blank leading
+  endpaper. The prev *button* was correctly disabled on the cover, but the
+  wheel and keyboard called `turn(-1)` directly and landed on view `[0,1]` — a
+  half-empty spread with nothing in it. `FIRST` is now the floor for every
+  navigation path. The page stays in the DOM because it is load-bearing: it is
+  what puts the cover on an *even* page, and turn.js pairs even pages leftward.
+  Delete it and every designed pair in the book re-pairs one page out — the
+  plate would face the wrong text, the portrait the wrong bio.
+- **Drop caps became unreadable after the font change.** A capital "I" in
+  Quicksand is a bare vertical stroke; on Our Story it sat directly above the
+  pull-quote's rule and read as a second border. Initials are set in Caveat now.
 - **Blank spread before the cover.** Pages had no background until turn.js added
   `.turn-page`, so the bare book showed for a beat on load. Pages now carry
   `--paper` from the start, and `#flipbook` fades up only once turn.js has
@@ -110,6 +121,39 @@ Open by choice, not by oversight:
 - **Reduced motion in the 3D mascot.** `reduceM` was declared and never used.
 - **`.turn-page .more-fade`.** Would have hidden the overflow hint on all 20
   pages once turn.js added `.turn-page` to every page.
+
+## The mascot
+
+Sprout is **inline SVG**, not three.js. Three expressions, plus a wave:
+
+| | |
+|---|---|
+| `happy` | open grin, bright round eyes — arrivals and good news |
+| `smile` | soft closed curve, eyes creased shut — the resting face |
+| `curious` | small round mouth, brows up, eyes wide, head tilted — questions and lists |
+
+`PLAN` in `assets/js/book.js` assigns one per spread; `startIdleLife()` drifts
+between them every 5.2 s when the reader is sitting still, and waves every 14 s.
+Turning a page restarts that clock (`bumpIdleLife()`), so the expression a
+spread asked for always gets its full beat on screen.
+
+Three is a deliberate limit. A mascot cycling through eight subtly different
+faces reads as noise; three distinct ones read as a character with moods.
+
+### Why not the three.js build
+
+`assets/js/sprout-3d.js` and `vendor/three.module.js` are still in the repo but
+are **commented out in `index.html`** — uncomment both lines to restore them.
+
+At the size Sprout actually renders (~110 px) the WebGL mascot's face did not
+resolve: the mouth geometry was invisible for `happy` and `smile`, leaving a
+grey blob with two dots, so the expressions the code was setting never reached
+the reader. The SVG is vector, so it reads at any size, costs 0 KB against
+three.js's 1.27 MB, and honours `prefers-reduced-motion` — which the WebGL
+version silently did not.
+
+It also removes a second driver: the 3D build ran its own random `MOOD_CYCLE`
+timer that overrode whatever expression the current spread had just requested.
 
 ## Design system
 

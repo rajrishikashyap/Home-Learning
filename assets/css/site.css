@@ -184,6 +184,8 @@ h1,h2,h3,.display{font-family:"Quicksand",system-ui,sans-serif;color:var(--sage-
   padding:clamp(18px,4vh,48px) clamp(10px,3vw,40px) 66px;perspective:2600px}
 .book-wrap{position:relative;display:inline-block}
 .book{
+  /* 1120 not 1180: the 60px buys the margin the mascot stands in */
+
   position:relative;
   width:min(var(--book-w),calc(100vw - 200px));
   height:min(80vh,780px);
@@ -257,7 +259,9 @@ html.flipping .topbar{backdrop-filter:none}
 }
 /* facing is mirrored on the artwork itself, so the host transform stays a pure
    translate+scale from the top-left corner */
-.sprout svg{width:100%;height:auto;display:block;overflow:visible;transform:scaleX(var(--face,1))}
+.sprout svg{width:100%;height:auto;display:block;overflow:visible;
+  transform:scaleX(var(--face,1)) rotate(var(--tilt,0deg));
+  transition:transform 600ms var(--spring)}
 .sprout canvas{width:132px;height:165px;display:block;transform:scaleX(var(--face,1))}
 .sprout.is3d svg{display:none}
 .sprout.is3d{filter:none}
@@ -288,8 +292,22 @@ html.flipping .topbar{backdrop-filter:none}
 }
 /* greeting burst on arrival, on its own layer so it never cancels the idle wave */
 #s-hand{transform-box:fill-box;transform-origin:14% 82%}
-.sprout.waving #s-hand{animation:wave 1s ease-in-out}
-@keyframes wave{0%,100%{transform:rotate(0)}20%{transform:rotate(-28deg)}40%{transform:rotate(9deg)}60%{transform:rotate(-24deg)}80%{transform:rotate(7deg)}}
+.sprout.waving #s-hand{animation:wave 1.45s cubic-bezier(.36,.07,.19,.97)}
+@keyframes wave{
+  0%,100%{transform:rotate(0)}
+  12%{transform:rotate(-34deg)}
+  26%{transform:rotate(10deg)}
+  40%{transform:rotate(-30deg)}
+  54%{transform:rotate(8deg)}
+  68%{transform:rotate(-26deg)}
+  82%{transform:rotate(5deg)}
+}
+/* the whole body leans into the wave — an arm moving on a still body reads
+   like a puppet, the lean is what makes it read as one creature */
+.sprout.waving .idle{animation:leanIn 1.45s cubic-bezier(.36,.07,.19,.97)}
+@keyframes leanIn{0%,100%{transform:rotate(0) translateY(0)}
+  30%{transform:rotate(-3.5deg) translateY(-5px)}
+  60%{transform:rotate(-2deg) translateY(-3px)}}
 /* a little hop when it arrives on a new page (own layer, so it can't fight floaty) */
 .sprout .hopper.hop{animation:hop .6s ease}
 @keyframes hop{0%,100%{transform:translateY(0) scale(1)}30%{transform:translateY(-16px) scale(1.04)}}
@@ -336,8 +354,12 @@ h2.title{font-size:clamp(28px,3.4vw,42px);font-weight:600;margin-bottom:14px}
 .lede{font-size:clamp(17px,1.5vw,20px);color:var(--ink);max-width:44ch;margin-top:14px}
 .body p{color:var(--ink);margin:0 0 14px;max-width:52ch}
 .drop::first-letter{
-  font-family:"Quicksand";font-weight:600;float:left;font-size:74px;line-height:.7;
-  padding:8px 10px 0 0;color:var(--honey);
+  /* Caveat, not Quicksand. A capital "I" in a geometric sans is a bare vertical
+     stroke — on the Our Story page it sat right above the pull-quote's rule and
+     read as a second border, not a letter. The handwritten face gives every
+     initial a distinct shape, and suits the margin notes it shares a page with. */
+  font-family:"Caveat";font-weight:700;float:left;font-size:82px;line-height:.62;
+  padding:14px 14px 0 2px;color:var(--honey-ink);
 }
 .rule{height:1px;background:var(--line);margin:20px 0;border:0}
 .pull{
