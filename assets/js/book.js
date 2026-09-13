@@ -13,19 +13,23 @@
 const $book   = jQuery('#flipbook');
 const bookEl  = document.getElementById('flipbook');
 const pageEls = [...bookEl.querySelectorAll(':scope > .page')];
-const LAST    = pageEls.length;                 // 21 = leading endpaper + 20 designed pages
-const SPREADS = Math.floor((LAST - 1) / 2);     // 10 designed spreads
+const LAST    = pageEls.length;                 // 19 designed pages
+/* The book opens on its cover, which stands alone on the right the way a real
+   one does, and everything after it is a spread:
+     view 0  = page 1            (cover)
+     view i  = pages 2i, 2i+1    (the nine designed spreads)
+   There is no longer a blank leading endpaper. It used to exist only to push
+   the cover onto an EVEN page so turn.js would pair it leftward; folding the
+   old welcome page into the cover removed the need for it without re-pairing
+   anything — the plate still faces its philosophy text, the portrait its bio. */
+const SPREADS = 1 + Math.ceil((LAST - 1) / 2);  // 10 views
 const prog    = document.getElementById('progress');
 const reduce  = window.matchMedia('(prefers-reduced-motion:reduce)').matches;
 const isNarrow = () => (window.innerWidth || document.documentElement.clientWidth || 1024) <= 900;
 
-/* Reduced motion shortens the turn rather than removing it. turn.js takes
-   `duration` literally, and a 1ms turn reads as a broken page-swap, not as a
-   considerate one — the intent of the setting is to avoid large sweeping
-   motion, not to strip every cue that something happened. */
-const FLIP_MS    = reduce ? 280 : 820;
+const FLIP_MS    = reduce ? 280 : 650;
 const CORNER_PX  = jQuery.isTouch ? 28 : 56;
-const SPREAD_LABELS = ['Cover & welcome','The idea','Roots & philosophy','Our story',
+const SPREAD_LABELS = ['Cover','The idea','Roots & philosophy','Our story',
   'What we teach','How it works','Your tutor','Programme & fee','Principles','Questions & contact'];
 
 let bookInited = false, fitWidth = 0;
@@ -39,9 +43,9 @@ let bookInited = false, fitWidth = 0;
    the floor for every navigation path, including the wheel and the keyboard,
    which previously bypassed the disabled prev button and landed on view [0,1]
    — a half-empty spread with nothing in it. */
-const FIRST = 2;
-const spreadToPage = i => 2 + Math.max(0, Math.min(SPREADS - 1, i)) * 2;
-const pageToSpread = p => Math.max(0, Math.min(SPREADS - 1, Math.floor((p - 2) / 2)));
+const FIRST = 1;                                /* the cover */
+const spreadToPage = i => { i = Math.max(0, Math.min(SPREADS - 1, i)); return i === 0 ? 1 : i * 2; };
+const pageToSpread = p => p <= 1 ? 0 : Math.min(SPREADS - 1, Math.floor(p / 2));
 
 function measuredWidth(){ return window.innerWidth || document.documentElement.clientWidth || 0; }
 function viewport(){
@@ -122,6 +126,7 @@ function paint(){
   if(!bookInited) return;
   const page = curPage();
   const idx  = pageToSpread(page);
+  bookEl.classList.toggle('at-cover', page <= 1 && !isNarrow());
   [...prog.children].forEach((b, k) => b.classList.toggle('on', k === idx));
   const prev = document.getElementById('prevBtn'), next = document.getElementById('nextBtn');
   if(prev) prev.disabled = page <= 2;
@@ -138,7 +143,7 @@ function goto(i){
 }
 function turn(d){
   if(!bookInited || animating()) return;
-  if(d < 0 && curPage() <= FIRST) return;            /* never open the endpaper */
+  if(d < 0 && curPage() <= FIRST) return;
   if(d > 0 && !isNarrow() && pageToSpread(curPage()) >= SPREADS - 1) return;
   d > 0 ? $book.turn('next') : $book.turn('previous');
 }

@@ -1876,12 +1876,22 @@ $.extend($.fn, {
 
 	},
 
+	/* PATCHED: requestAnimationFrame instead of setInterval.
+	 *
+	 * Upstream drives the fold with setInterval(f, 30) and advances progress by a
+	 * fixed 30ms step per tick. Two problems on a 60Hz display: a 30ms timer beats
+	 * against the 16.7ms vsync, so some vsync frames get two updates and others
+	 * get none - which is the judder - and the fold's real duration drifts with
+	 * timer lag because progress is counted in ticks rather than elapsed time.
+	 *
+	 * Driven by rAF and derived from the actual timestamp, every update lands on a
+	 * vsync and the turn finishes in the time it was asked for at any frame rate. */
 	animatef: function(point) {
 
 		var data = this.data();
 
-		if (data.effect)
-			clearInterval(data.effect.handle);
+		if (data.effect && data.effect.handle)
+			cancelAnimationFrame(data.effect.handle);
 
 		if (point) {
 
@@ -1892,33 +1902,32 @@ $.extend($.fn, {
 			var j, diff = [],
 				len = point.to.length,
 				that = this,
-				fps = point.fps || 30,
-				time = - fps,
-				f = function() {
-					var j, v = [];
-					time = Math.min(point.duration, time + fps);
+				start = null,
+				f = function(now) {
+					if (start === null) start = now;
+					var j, v = [], time = Math.min(point.duration, now - start);
 
 					for (j = 0; j < len; j++)
 						v.push(point.easing(1, time, point.from[j], diff[j], point.duration));
 
 					point.frame((len==1) ? v[0] : v);
 
-					if (time==point.duration) {
-						clearInterval(data.effect.handle);
+					if (time >= point.duration) {
 						delete data['effect'];
 						that.data(data);
 						if (point.complete)
 							point.complete();
-						}
-					};
+					} else {
+						data.effect.handle = requestAnimationFrame(f);
+					}
+				};
 
 			for (j = 0; j < len; j++)
 				diff.push(point.to[j] - point.from[j]);
 
 			data.effect = point;
-			data.effect.handle = setInterval(f, fps);
 			this.data(data);
-			f();
+			data.effect.handle = requestAnimationFrame(f);
 		} else {
 			delete data['effect'];
 		}

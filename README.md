@@ -242,22 +242,64 @@ vanishing.
 
 ## Page-turn engine
 
-turn.js owns `#flipbook` and its 21 `.page` children, wraps each in a
-`.turn-page-wrapper`, and keeps ~6 pages in the DOM at a time. `assets/js/book.js`
-supplies the glue:
+turn.js owns `#flipbook` and its 19 `.page` children, wraps each in a
+`.turn-page-wrapper`, and keeps ~6 pages in the DOM at a time.
 
-- **Sizing** — turn.js needs pixel dimensions, so `bookSize()` mirrors the CSS
-  clamps and feeds `turn('size', w, h)` on resize.
-- **Scroll gesture** — not part of turn.js, and not in the demo this was modelled
-  on. A wheel event scrolls whichever visible page still has text in that
-  direction; only when both have bottomed out does the accumulated delta call
-  `turn('next'|'previous')`.
-- **Corner size** — turn.js starts a drag-fold only within `cornerSize` of a
-  corner, so page centres stay free for the scrolling `.page-inner` panes. The
-  default 100px is shrunk to 28px on touch, where it would otherwise swallow
-  most of a swipe. turn.js rebuilds a page's flip when it re-enters range, which
-  resets this, so it is reapplied on every `turned`.
-- **Responsive** — `turn('display', 'single'|'double')` at the 900px breakpoint.
+**There is no blank endpaper.** The book opens on its cover, which stands alone
+on the right the way a real one does; the half beside it is the inside board,
+styled as binding with a debossed mark. The endpaper used to exist only to push
+the cover onto an *even* page so turn.js would pair it leftward. Folding the old
+"a note before you begin" page into the cover removed the need for it without
+re-pairing anything — the plate still faces its philosophy text, the portrait
+its bio, questions still face contact.
+
+```
+view 0  = page 1          cover (alone, right)
+view i  = pages 2i, 2i+1  the nine designed spreads
+```
+
+Forcing the cover to span both halves was tried and reverted: turn.js nests each
+page two levels below its wrapper and sizes it inline from half the book width,
+and the fold geometry is computed from that same width, so the override moved
+the wrapper but not the page and exposed the page behind it.
+
+`assets/js/book.js` supplies sizing, the scroll gesture, the spread mapping and
+the corner-size clamp.
+
+### Smoothness
+
+`vendor/turn.js` carries one local patch, marked `PATCHED` in the source.
+Upstream drives the fold with `setInterval(f, 30)` and advances progress by a
+fixed 30 ms step per tick. On a 60 Hz display a 30 ms timer beats against the
+16.7 ms vsync — some frames get two updates, some none — and the fold's real
+duration drifts with timer lag because progress is counted in ticks rather than
+elapsed time. It now runs on `requestAnimationFrame` and derives progress from
+the timestamp.
+
+Everything else that competes for the main thread mid-fold is stood down via
+`html.flipping`: the paper texture, the topbar's `backdrop-filter`, and the
+mascot's seven infinite SVG transform animations, which are *not*
+compositor-accelerated and tick on the same thread turn.js is using.
+
+One page turn, headless (a relative signal, not real-device numbers):
+
+| | before | after |
+|---|---|---|
+| p95 frame gap | 26.3 ms | **19.1 ms** |
+| worst frame | 54.4 ms | **28.9 ms** |
+| frames > 20 ms | 7 | **3** |
+| frames > 33 ms | 2 | **0** |
+
+Across 5 trials of 4 turns, the rAF driver alone cut long frames from a median
+of 26 to 18. Duration went 820 → 650 ms, which does not change the drop rate
+(measured: 16/16/15 long frames at 820/650/520 ms) but reads closer to a real
+page.
+
+**The remaining limit is structural.** turn.js recomputes fold geometry in
+JavaScript every frame — 237 `transform()` calls and 482 `css()` writes per turn
+at 650 ms. A CSS-transform engine does zero per-frame JS and hands the whole
+animation to the compositor. If the turn still isn't smooth enough on a weak
+GPU, that is the trade to revisit, not more tuning.
 
 ### Cost
 
