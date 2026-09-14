@@ -48,8 +48,9 @@ whose terms restrict use to
 
 **Home Learning is a paid tuition service**, so neither release covers it
 without a licence bought from <https://www.turnjs.com/>. The file in `vendor/`
-is a copy supplied for this project; `vendor/turn.js.LICENSE.txt` is a pointer
-to the canonical terms, not a grant.
+is a copy supplied for this project, carrying two local performance patches
+(marked `PATCHED` in the source — see Smoothness);
+`vendor/turn.js.LICENSE.txt` is a pointer to the canonical terms, not a grant.
 
 Treat this as unresolved until a licence is purchased, or the library is
 replaced. A commercially-safe alternative is
@@ -280,63 +281,79 @@ view i  = pages 2i, 2i+1  the nine designed spreads
 `assets/js/book.js` supplies sizing, the scroll gesture, the spread mapping and
 the corner-size clamp.
 
-### The cover is a `hard` page
+### Every page is a `hard` page
 
-The 4th release understands a `hard` page — a rigid board that swings as one
-piece instead of folding — so the cover now carries `class="hard"` and opens
-like a front board rather than bending like paper. That is also what closed out
-an older workaround: forcing the cover to span both halves had been tried and
-reverted, because turn.js nests each page two levels below its wrapper and sizes
-it inline from half the book width.
+turn.js has two turn effects and only one of them is cheap.
 
-One thing the `hard` effect needs from the CSS. It sizes its two faces from
-jQuery's `.width()` — the **content** width, padding excluded — and then clips
-them. Any horizontal padding on the page element itself therefore becomes a bare
-strip down the outer edge with the next page showing through it; at 1440px that
-was a 92px strip (two 46px `clamp()` paddings). So `.book .page.hard` carries no
-padding of its own and the same gutter is set on the panes inside it.
+`sheet` bends the leaf like paper. Per animation frame it drives four surfaces
+(the page, its mirrored back, and two shadow layers), regenerates **two
+full-size `linear-gradient` background-image strings**, and repaints a 20px
+blurred `box-shadow`. `hard` swings the leaf rigid: a transform and an alpha.
+
+That is the entire reason the cover turned smoothly from the first day and the
+rest of the book stuttered — the cover was the only hard page. Marking every
+page hard closed the gap exactly. The trade is that a leaf no longer bends as
+it turns; it swings, the way a board book or a photo album does.
+
+Two things the hard effect needs from the CSS:
+
+- It sizes each face from jQuery's `.width()` — the **content** width, padding
+  excluded — and then clips to it. Horizontal padding on the page itself
+  therefore shows up as a bare strip down the outer edge with the page behind
+  visible through it; at 1440px that was a 92px strip, two 46px `clamp()`
+  paddings. So `.book .page.hard` carries no padding of its own and the gutter
+  is set on the rows inside it. For the same reason `.page.left` draws its
+  gutter rule as an `inset` box-shadow rather than a `border`, which would take
+  a pixel of content width and leave a seam for the whole turn.
+- A rigid leaf casts turn.js's shading onto whatever is in the slot it is
+  swinging into, and for the first part of the turn that slot is the book
+  itself. `.book` is painted in `--paper` rather than the page-edge colour, so
+  that shading reads as a shadow falling on a page instead of a flat grey band.
 
 `autoCenter` is deliberately left off. It would shift the whole book a quarter
-width left so the lone cover sat centred, but here the half beside the cover is
-drawn as the front board, so the book should stay put.
+width left so the lone cover sat centred, but the half beside the cover is drawn
+as the front board, so the book should stay put.
 
 ### Smoothness
 
-The 3rd release drove the fold with `setInterval(f, 30)` and advanced progress
-by a fixed 30 ms step per tick. On a 60 Hz display a 30 ms timer beats against
-the 16.7 ms vsync — some frames get two updates, some none — and the fold's real
-duration drifts with timer lag because progress is counted in ticks rather than
-elapsed time. That needed a local patch. **The 4th release does it upstream**:
-`window.requestAnim` is `requestAnimationFrame`, and `animatef` derives progress
-from the elapsed timestamp. `vendor/turn.js` is now stock, with no patches.
+Two things were wrong, and they were not the same thing.
 
-Everything else that competes for the main thread mid-fold is stood down via
+**Forced synchronous layout.** The turn read element widths and heights many
+times per frame — `_c` twice, `_c2` twice, `_fold` three times, `O()` four times
+per call and it runs twice — and every read came straight after turn.js had
+written a transform. Layout was dirty, so the browser had to lay out
+synchronously before it could answer: about a dozen forced reflows per frame,
+interleaved with the writes. None of those numbers can change mid-turn, so
+`vendor/turn.js` now reads each element once per resize and serves a cache after
+that (`dimOf`, invalidated by a generation counter that `resize` bumps). Same
+for the per-frame `z-index` read, which now prefers the inline value turn.js
+sets itself. Marked `PATCHED` in the source.
+
+**The wrong turn effect**, which was the larger half — see above.
+
+Frame cadence, 5 trials each, measured on the same headless box:
+
+| one mid-book turn | before | after |
+|---|---|---|
+| median frame gap | 25.5 ms | **16.7 ms** (60fps) |
+| p95 frame gap | 46.4 ms | **25.6 ms** |
+| worst frame | 59.6 ms | **34.9 ms** |
+| frames > 33 ms | 9.2 | **1.2** |
+| forced reflows per frame | 11.5 | **1.6** |
+| frames delivered | 45 | **62** |
+
+The cover gained from the reflow work too: p95 28.4 → 22.9 ms, long frames
+1.8 → 0.4. Mid-book and the cover now measure identically, which is the point.
+
+Everything else that competes for the main thread mid-turn is stood down via
 `html.flipping`: the paper texture, the topbar's `backdrop-filter`, and the
 mascot's seven infinite SVG transform animations, which are *not*
 compositor-accelerated and tick on the same thread turn.js is using.
 
-Frame cadence, 5 trials each, both builds measured back-to-back on the same
-headless box (a relative signal, not real-device numbers):
-
-| one turn | turn.js 3 (patched) | turn.js 4.1.0 |
-|---|---|---|
-| cover → spread 1, median gap | 24.6 ms | **16.8 ms** |
-| cover → spread 1, p95 gap | 39.5 ms | **30.5 ms** |
-| cover → spread 1, frames > 33 ms | 4 | **1.8** |
-| spread 4 → 5, median gap | 23.7 ms | 26.3 ms |
-| spread 4 → 5, p95 gap | 45.3 ms | 48.8 ms |
-
-The cover is markedly smoother, which is the `hard` board doing less work than a
-fold. Mid-book, the two are level — the differences there are inside the run-to-
-run spread of this machine.
-
-**The remaining limit is structural.** turn.js recomputes fold geometry in
-JavaScript every frame — 92 `transform()` calls and 384 `css()` writes per turn
-at 650 ms. A CSS-transform engine does zero per-frame JS and hands the whole
-animation to the compositor. If the turn still isn't smooth enough on a weak
-GPU, that is the trade to revisit, not more tuning. On desktop it is not
-visible; on low-end Android those main-thread style writes are where it would
-show, and that has not been measured on a real phone.
+**If you ever want the bending-paper fold back**, remove `hard` from the page
+divs in `index.html`. Everything else — pairing, navigation, the drag, the
+guide — is independent of the effect. It will cost roughly the frame budget in
+the table above.
 
 ## Standalone build
 

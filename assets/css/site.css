@@ -209,7 +209,12 @@ h1,h2,h3,.display{font-family:"Quicksand",system-ui,sans-serif;color:var(--sage-
   border-radius:var(--r-lg);
   /* the stacked page-edges, warmed to match the new ground */
   box-shadow:var(--sh-4), 0 3px 0 #f0e2d2, 0 6px 0 #e8d7c4, 0 10px 0 #dfcbb5, 0 18px 38px rgba(88,60,42,.16);
-  background:#f0e2d2;
+  /* Paper, not the page-edge colour. A rigid leaf casts turn.js's shading onto
+     whatever sits in the slot it is swinging into, and for the fraction of the
+     turn before the leaf covers that slot, that is the book itself. On the
+     edge-stack colour the shading read as a flat grey band; on paper it reads
+     as what it is — a shadow falling on the page underneath. */
+  background:var(--paper);
 }
 .book .page{width:100%;height:100%;background:var(--paper);overflow:hidden}
 /* spine shading across the open gutter */
@@ -244,7 +249,10 @@ html.flipping .more-fade:after{animation-play-state:paused!important}
   background-image:
     repeating-linear-gradient(0deg, rgba(120,100,60,.016) 0 2px, transparent 2px 4px),
     radial-gradient(120% 80% at 50% 0%, rgba(255,255,255,.42), transparent 60%)}
-.page.left{border-right:1px solid rgba(150,130,80,.15)}
+/* An inset shadow, not a border. A hard page's faces are sized from the content
+   box, so a 1px border on the page would leave a 1px seam down the gutter edge
+   for the whole turn. This draws the same line without taking layout width. */
+.page.left{box-shadow:inset -1px 0 0 rgba(150,130,80,.15)}
 .page.plate{padding:0;overflow:hidden;background:#c7bdb4}
 .page.plate img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
   /* the art is tall (736x1308); bias the crop upward so the face and the
@@ -278,17 +286,25 @@ html.flipping .more-fade:after{animation-play-state:paused!important}
 /* turn.js 4 draws its own gutter shading into this; ours is the .spine element */
 .book > .shadow{border-radius:var(--r-lg);pointer-events:none}
 
-/* The cover is a `hard` page: turn.js 4 swings it as one rigid board instead of
-   folding it, which is what a front cover does. That effect sizes its two faces
-   from jQuery's .width() — the CONTENT width, padding excluded — and then clips
-   them, so any horizontal padding on the page itself becomes a bare strip down
-   the outer edge with the next page showing through it. (At 1440px that was a
-   92px strip: two 46px clamp() paddings.) So a hard page carries no padding of
-   its own; the same gutter is set on the pane inside it instead. */
+/* Every page is a `hard` page: turn.js 4 swings a hard leaf as one rigid piece
+   instead of folding it, and that is the cheap path — a transform per frame and
+   nothing else, where the fold rebuilds two gradients and a blurred box-shadow
+   every frame. It is why the cover always turned smoothly and the rest did not.
+   The trade is that a leaf no longer bends; it swings, the way a board book or
+   a photo album does.
+
+   The effect sizes each face from jQuery's .width() — the CONTENT width,
+   padding excluded — and then clips to it. So any horizontal padding on the
+   page itself becomes a bare strip down the outer edge with the page behind
+   showing through; at 1440px that was a 92px strip, two 46px clamp() paddings.
+   A hard page therefore carries no padding of its own, and the same gutter is
+   set on the rows inside it. */
 .book .page.hard{padding-left:0;padding-right:0}
 .book .page.hard > .page-inner,
 .book .page.hard > .running-head,
 .book .page.hard > .folio{padding-left:clamp(24px,3.2vw,48px);padding-right:clamp(24px,3.2vw,48px)}
+/* the plate is full-bleed art, so it keeps no gutter */
+.book .page.hard.plate > .page-inner{padding-left:0;padding-right:0}
 
 /* The cover stands alone on the right, the way a real book sits when you open
    the front board. The half beside it is that board — not a missing page. It

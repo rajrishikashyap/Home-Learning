@@ -50,6 +50,29 @@
         (c = "-" + a[b].toLowerCase() + "-");
     return c;
   }
+  /* PATCHED: element sizes without a forced synchronous layout.
+   *
+   * A turn reads element widths and heights many times per animation frame —
+   * _c twice, _c2 twice, _fold three times, and O() four times per call, twice
+   * per frame — and every one of those reads is issued straight after turn.js
+   * has written a transform. Layout is dirty, so the browser must lay out
+   * synchronously before it can answer. Measured on the sheet fold: about a
+   * dozen forced reflows per frame, interleaved with the writes.
+   *
+   * None of those numbers can change mid-turn. A page, its wrapper and its
+   * shadows are only ever resized by resize(), so each is read once and served
+   * from a cache after that. resize() bumps dimGen, which invalidates every
+   * cached entry at once without having to walk them. */
+  var dimGen = 0;
+  function dimOf(a) {
+    var b = a[0];
+    if (!b) return { w: 0, h: 0 };
+    var c = b.__turnDim;
+    if (c && c.r === dimGen) return c;
+    c = { r: dimGen, w: a.width(), h: a.height() };
+    b.__turnDim = c;
+    return c;
+  }
   function O(a, b, c, d, e) {
     var h,
       f = [];
@@ -71,17 +94,16 @@
           " )",
       });
     } else {
-      var b = { x: (b.x / 100) * a.width(), y: (b.y / 100) * a.height() },
-        c = { x: (c.x / 100) * a.width(), y: (c.y / 100) * a.height() },
+      var dimA = dimOf(a);
+      var b = { x: (b.x / 100) * dimA.w, y: (b.y / 100) * dimA.h },
+        c = { x: (c.x / 100) * dimA.w, y: (c.y / 100) * dimA.h },
         g = c.x - b.x;
       h = c.y - b.y;
       var i = Math.atan2(h, g),
         w = i - Math.PI / 2,
-        w =
-          Math.abs(a.width() * Math.sin(w)) +
-          Math.abs(a.height() * Math.cos(w)),
+        w = Math.abs(dimA.w * Math.sin(w)) + Math.abs(dimA.h * Math.cos(w)),
         g = Math.sqrt(h * h + g * g),
-        c = j(c.x < b.x ? a.width() : 0, c.y < b.y ? a.height() : 0),
+        c = j(c.x < b.x ? dimA.w : 0, c.y < b.y ? dimA.h : 0),
         k = Math.tan(i);
       h = -1 / k;
       k = (h * c.x - c.y - k * b.x + b.y) / (h - k);
@@ -1048,9 +1070,21 @@
       z: function (a) {
         var b = this.data().f;
         b.opts["z-index"] = a;
+        /* PATCHED: the fallback read only matters when no z was passed, but it
+           ran on every call — once per frame — and .css() on a parent forces a
+           style recalc mid-fold. turn.js sets that z-index inline itself, so
+           read the inline value and keep the computed read for the rare case
+           where it is not set. */
         b.fwrapper &&
           b.fwrapper.css({
-            zIndex: a || parseInt(b.parent.css("z-index"), 10) || 0,
+            zIndex:
+              a ||
+              parseInt(
+                (b.parent[0] && b.parent[0].style.zIndex) ||
+                  b.parent.css("z-index"),
+                10
+              ) ||
+              0,
           });
         return this;
       },
@@ -1111,35 +1145,37 @@
       },
       _c: function (a, b) {
         b = b || 0;
+        var d = dimOf(this);
         switch (a) {
           case "tl":
             return j(b, b);
           case "tr":
-            return j(this.width() - b, b);
+            return j(d.w - b, b);
           case "bl":
-            return j(b, this.height() - b);
+            return j(b, d.h - b);
           case "br":
-            return j(this.width() - b, this.height() - b);
+            return j(d.w - b, d.h - b);
           case "l":
             return j(b, 0);
           case "r":
-            return j(this.width() - b, 0);
+            return j(d.w - b, 0);
         }
       },
       _c2: function (a) {
+        var d = dimOf(this);
         switch (a) {
           case "tl":
-            return j(2 * this.width(), 0);
+            return j(2 * d.w, 0);
           case "tr":
-            return j(-this.width(), 0);
+            return j(-d.w, 0);
           case "bl":
-            return j(2 * this.width(), this.height());
+            return j(2 * d.w, d.h);
           case "br":
-            return j(-this.width(), this.height());
+            return j(-d.w, d.h);
           case "l":
-            return j(2 * this.width(), 0);
+            return j(2 * d.w, 0);
           case "r":
-            return j(-this.width(), 0);
+            return j(-d.w, 0);
         }
       },
       _foldingPage: function () {
@@ -1176,6 +1212,7 @@
         return this.data().f.effect;
       },
       resize: function (a) {
+        dimGen++;                              /* PATCHED: invalidate the size cache */
         var b = this.data().f,
           c = b.opts.turn.data(),
           d = this.width(),
@@ -1268,8 +1305,9 @@
         var b = this.data().f,
           c = b.opts.turn.data(),
           d = i._c.call(this, a.corner),
-          e = this.width(),
-          h = this.height();
+          dimP = dimOf(this),
+          e = dimP.w,
+          h = dimP.h;
         switch (b.effect) {
           case "hard":
             a.x =
@@ -1368,7 +1406,7 @@
               I = i._foldingPage.call(this);
             Math.tan(0);
             var N = c.opts.acceleration,
-              Q = b.wrapper.height(),
+              Q = dimOf(b.wrapper).h,
               D = "t" == a.corner.substr(0, 1),
               B = "l" == a.corner.substr(1, 1),
               H = function () {

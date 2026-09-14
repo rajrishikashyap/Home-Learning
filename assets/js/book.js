@@ -7,11 +7,16 @@
  *
  * The 4th release drives its own frames off requestAnimationFrame (see
  * `window.requestAnim` / `animatef` in vendor/turn.js), which is why the hand
- * written rAF patch the 3rd release needed is gone. It also understands a
- * `hard` page — a rigid board that swings as one piece instead of folding —
- * which is what the cover now is.
+ * written rAF patch the 3rd release needed is gone.
  *
- * turn.js starts a drag-fold only within `cornerSize` of a corner (see
+ * Every page is `hard`. turn.js has two turn effects: `sheet` bends the leaf
+ * like paper, and `hard` swings it rigid. Only one of them is cheap. The sheet
+ * fold drives four surfaces per frame and rebuilds two gradient backgrounds and
+ * a blurred box-shadow on every one of them; `hard` writes a transform and an
+ * alpha. That is the whole reason the cover turned smoothly while the rest of
+ * the book stuttered, and marking the pages hard is what closed the gap.
+ *
+ * turn.js starts a drag-turn only within `cornerSize` of a corner (see
  * _cornerActivated), so the middle of a page stays free for the scrolling
  * .page-inner panes. On touch we shrink that zone further — at phone widths a
  * 100px corner would swallow most of a swipe. A hard page ignores the vertical
@@ -183,10 +188,10 @@ function initBook(){
     acceleration: true,
     elevation:    50,                     /* the lift before the page swings */
     gradients:    !jQuery.isTouch,        /* the fold shading costs too much on touch */
-    /* Drag a fold from either bottom corner. Not the top ones: the running head
-       sits there, and a top-corner grab on a trackpad kept starting a fold when
-       someone meant to scroll the pane. (The cover ignores this and takes its
-       whole outer edge — turn.js gives a hard page 'l'/'r' instead.) */
+    /* Only meaningful for sheet pages, which this book no longer has — every
+       page is hard, and turn.js gives a hard page the whole 'l'/'r' outer edge
+       regardless. Kept explicit so that turning a page back into a sheet does
+       not silently re-enable the top corners, where the running head sits. */
     turnCorners:  'bl,br',
     /* Left at false on purpose. turn.js would shift the whole book a quarter
        width left so the lone cover sat centred; here the half beside the cover
