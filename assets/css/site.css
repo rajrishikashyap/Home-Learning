@@ -307,87 +307,125 @@ html.flipping .more-fade:after{animation-play-state:paused!important}
 .book.single{width:min(560px,calc(100vw - 24px));height:min(78vh,660px)}
 .book.single .spine{display:none}
 
-/* ---------- Mascot (Sprout) — persistent navigator ---------- */
+/* ---------- Sprout — the guide ----------
+ * One fixed box at the origin; every move is a compositor-only transform, so
+ * repositioning never triggers layout in the middle of a page fold.
+ * Poses are rotations about named origins: the head pivots at the neck, each
+ * arm at its own shoulder. Nothing here animates a layout property. */
 .sprout{
-  /* fixed box at the origin; every move is a compositor-only transform, so
-     repositioning never triggers layout in the middle of a page fold */
   position:fixed;left:0;top:0;z-index:40;width:132px;pointer-events:none;
   opacity:1;transform-origin:0 0;contain:paint;
-  filter:drop-shadow(0 18px 26px rgba(31,58,51,.22));
+  filter:drop-shadow(0 16px 24px rgba(88,60,42,.16));
   transform:translate3d(var(--x,24px),var(--y,180px),0) scale(var(--s,1));
-  transition:transform 1.15s cubic-bezier(.5,0,.2,1), opacity .5s ease;
+  transition:transform 1.05s cubic-bezier(.5,0,.2,1), opacity .5s ease;
   will-change:transform;
 }
-/* facing is mirrored on the artwork itself, so the host transform stays a pure
-   translate+scale from the top-left corner */
 .sprout svg{width:100%;height:auto;display:block;overflow:visible;
   transform:scaleX(var(--face,1)) rotate(var(--tilt,0deg));
   transition:transform 600ms var(--spring)}
 .sprout canvas{width:132px;height:165px;display:block;transform:scaleX(var(--face,1))}
 .sprout.is3d svg{display:none}
 .sprout.is3d{filter:none}
-.sprout.is3d .idle,.sprout.is3d .hopper{animation:none}
-.sprout .idle{transform-origin:50% 88%;animation:floaty 5.5s ease-in-out infinite}
-.sprout .hopper{transform-origin:50% 90%}
-@keyframes floaty{0%,100%{transform:translateY(0) rotate(-1.5deg)}50%{transform:translateY(-9px) rotate(1.5deg)}}
-/* blink: scale eyes vertically for a moment */
-#s-eyes{transform-box:fill-box;transform-origin:center;animation:blink 5s infinite}
-@keyframes blink{0%,94%,100%{transform:scaleY(1)}96%,98%{transform:scaleY(.12)}}
-/* living idle: breathing torso, swaying sprout, a hand that waves on its own */
-#s-torso{transform-box:fill-box;transform-origin:50% 100%;animation:breathe 3.8s ease-in-out infinite}
-@keyframes breathe{0%,100%{transform:scale(1,1)}50%{transform:scale(1.018,.986)}}
-#s-leaves{transform-box:fill-box;transform-origin:50% 100%;animation:sway 4.4s ease-in-out infinite}
-@keyframes sway{0%,100%{transform:rotate(-3.5deg)}50%{transform:rotate(3.5deg)}}
-#s-leafL{transform-box:fill-box;transform-origin:100% 100%;animation:leafL 3.1s ease-in-out infinite}
-@keyframes leafL{0%,100%{transform:rotate(0)}50%{transform:rotate(-7deg)}}
-#s-leafR{transform-box:fill-box;transform-origin:0% 100%;animation:leafR 3.7s ease-in-out infinite}
-@keyframes leafR{0%,100%{transform:rotate(0)}50%{transform:rotate(8deg)}}
-#s-arm{transform-box:fill-box;transform-origin:14% 82%;animation:waveIdle 8s ease-in-out infinite}
-@keyframes waveIdle{
-  0%,70%,100%{transform:rotate(0)}
-  74%{transform:rotate(-26deg)}
-  78%{transform:rotate(6deg)}
-  82%{transform:rotate(-22deg)}
-  86%{transform:rotate(4deg)}
-  90%{transform:rotate(-12deg)}
+
+/* the rig */
+.sprout [id]{transform-box:fill-box}
+#s-armL{transform-origin:96% 6%}
+#s-armR{transform-origin:4% 6%}
+#s-head{transform-origin:50% 96%}
+#s-leaves{transform-origin:50% 100%}
+#s-body{transform-origin:50% 100%}
+#s-armL,#s-armR,#s-head{transition:transform 620ms var(--spring)}
+
+/* poses — the arm angles stop short of the head so a raised arm stays visible */
+.sprout[data-pose="smile"]   #s-armL{transform:rotate(6deg)}
+.sprout[data-pose="smile"]   #s-armR{transform:rotate(-6deg)}
+.sprout[data-pose="happy"]   #s-armL{transform:rotate(14deg)}
+.sprout[data-pose="happy"]   #s-armR{transform:rotate(-14deg)}
+.sprout[data-pose="curious"] #s-armL{transform:rotate(4deg)}
+.sprout[data-pose="curious"] #s-armR{transform:rotate(-38deg)}
+.sprout[data-pose="wave"]    #s-armR{transform:rotate(-118deg)}
+.sprout[data-pose="point"]   #s-armR{transform:rotate(-80deg)}
+.sprout[data-pose="cheer"]   #s-armL{transform:rotate(112deg)}
+.sprout[data-pose="cheer"]   #s-armR{transform:rotate(-112deg)}
+.sprout[data-pose="read"]    #s-armR{transform:rotate(-58deg)}
+
+/* idle life: a slow float, a breath, leaves that drift, and a blink */
+.sprout .idle{transform-origin:50% 88%;animation:floaty 5.6s ease-in-out infinite}
+@keyframes floaty{0%,100%{transform:translateY(0) rotate(-1.4deg)}50%{transform:translateY(-9px) rotate(1.4deg)}}
+#s-eyes{transform-origin:center;animation:blink 5.4s infinite}
+@keyframes blink{0%,94%,100%{transform:scaleY(1)}96%,98%{transform:scaleY(.1)}}
+#s-body{animation:breathe 3.9s ease-in-out infinite}
+@keyframes breathe{0%,100%{transform:scale(1,1)}50%{transform:scale(1.02,.985)}}
+#s-leaves{animation:sway 4.6s ease-in-out infinite}
+@keyframes sway{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(4deg)}}
+#s-leafL{transform-origin:100% 100%;animation:leafL 3.2s ease-in-out infinite}
+@keyframes leafL{0%,100%{transform:rotate(0)}50%{transform:rotate(-8deg)}}
+#s-leafR{transform-origin:0% 100%;animation:leafR 3.8s ease-in-out infinite}
+@keyframes leafR{0%,100%{transform:rotate(0)}50%{transform:rotate(9deg)}}
+
+/* the greeting: the arm swings and the whole body leans into it, because an arm
+   moving on a still body reads like a puppet rather than a creature */
+.sprout.waving #s-armR{animation:waveArm 1.5s cubic-bezier(.36,.07,.19,.97)}
+@keyframes waveArm{
+  0%,100%{transform:rotate(-118deg)}
+  15%{transform:rotate(-146deg)} 30%{transform:rotate(-100deg)}
+  45%{transform:rotate(-142deg)} 60%{transform:rotate(-104deg)}
+  75%{transform:rotate(-136deg)} 90%{transform:rotate(-112deg)}
 }
-/* greeting burst on arrival, on its own layer so it never cancels the idle wave */
-#s-hand{transform-box:fill-box;transform-origin:14% 82%}
-.sprout.waving #s-hand{animation:wave 1.45s cubic-bezier(.36,.07,.19,.97)}
-@keyframes wave{
-  0%,100%{transform:rotate(0)}
-  12%{transform:rotate(-34deg)}
-  26%{transform:rotate(10deg)}
-  40%{transform:rotate(-30deg)}
-  54%{transform:rotate(8deg)}
-  68%{transform:rotate(-26deg)}
-  82%{transform:rotate(5deg)}
-}
-/* the whole body leans into the wave — an arm moving on a still body reads
-   like a puppet, the lean is what makes it read as one creature */
-.sprout.waving .idle{animation:leanIn 1.45s cubic-bezier(.36,.07,.19,.97)}
+.sprout.waving .idle{animation:leanIn 1.5s cubic-bezier(.36,.07,.19,.97)}
 @keyframes leanIn{0%,100%{transform:rotate(0) translateY(0)}
-  30%{transform:rotate(-3.5deg) translateY(-5px)}
-  60%{transform:rotate(-2deg) translateY(-3px)}}
-/* a little hop when it arrives on a new page (own layer, so it can't fight floaty) */
-.sprout .hopper.hop{animation:hop .6s ease}
-@keyframes hop{0%,100%{transform:translateY(0) scale(1)}30%{transform:translateY(-16px) scale(1.04)}}
+  30%{transform:rotate(-4deg) translateY(-6px)} 60%{transform:rotate(-2deg) translateY(-3px)}}
+
+/* the nudge: when the reader has gone quiet, the pointing arm pulses toward the
+   book instead of just sitting there */
+.sprout.nudging #s-armR{animation:nudgeArm 1.25s ease-in-out 2}
+@keyframes nudgeArm{0%,100%{transform:rotate(-80deg)}50%{transform:rotate(-94deg)}}
+
+/* ---------- what Sprout is saying ---------- */
+.sprout-say{
+  position:fixed;left:0;top:0;z-index:41;pointer-events:none;
+  width:176px;padding:11px 14px;border-radius:var(--r-md);
+  background:#fff;border:1px solid var(--line);box-shadow:var(--sh-2);
+  font-family:"Quicksand",system-ui,sans-serif;font-weight:600;font-size:13.5px;
+  line-height:1.45;color:var(--ink);text-align:center;
+  transform:translate3d(var(--bx,0),var(--by,0),0) scale(.9);
+  opacity:0;transition:opacity .34s ease, transform .44s var(--spring);
+}
+.sprout-say.on{opacity:1;transform:translate3d(var(--bx,0),var(--by,0),0) scale(1)}
+/* The tail points UP at Sprout, because the bubble sits below. Above was the
+   obvious place and was tried: the margin is only ~130px wide, so a bubble wide
+   enough to read overhangs into the book's edge — straight over the next-page
+   arrow. Covering the navigation is a bad trade for a caption. */
+.sprout-say::after{
+  content:"";position:absolute;left:50%;top:-7px;width:13px;height:13px;
+  margin-left:-6.5px;background:#fff;border-left:1px solid var(--line);
+  border-top:1px solid var(--line);transform:rotate(45deg);border-radius:3px 0 0 0;
+}
+
+/* Sprout is a real control: clicking turns the page. Invisible button sat over
+   the artwork, so it keeps a focus ring and a keyboard path without the SVG
+   needing to be focusable itself. */
+.sprout-hit{
+  position:fixed;left:0;top:0;z-index:42;border:0;padding:0;cursor:pointer;
+  background:transparent;color:transparent;font-size:0;border-radius:var(--r-lg);
+  transform:translate3d(var(--hx,0),var(--hy,0),0);
+  width:var(--hw,120px);height:var(--hh,150px);
+}
+.sprout-hit:focus-visible{outline:2px solid var(--peach);outline-offset:3px}
+.sprout-hit[hidden]{display:none}
+
 @media (prefers-reduced-motion:reduce){
-  /* stop the continuous idling — floating, breathing, swaying leaves — which is
-     the part that runs forever and is genuinely worth suppressing */
-  .sprout .idle,.sprout #s-torso,.sprout #s-leaves,.sprout #s-leafL,.sprout #s-leafR{
+  .sprout .idle,.sprout #s-body,.sprout #s-leaves,.sprout #s-leafL,.sprout #s-leafR{
     animation:none!important;transform:none!important}
-  /* keep the blink and keep the wave: both are brief, local, and they are the
-     whole reason the mascot reads as alive rather than as a sticker */
-  .sprout.waving #s-hand{animation:waveGentle 1.6s ease-in-out}
+  .sprout.waving #s-armR{animation:waveGentle 1.6s ease-in-out}
+  .sprout.nudging #s-armR{animation:none}
   .sprout.waving .idle{animation:none}
   #s-eyes{animation:blink 6s infinite}
+  .sprout-say{transition:opacity .2s linear}
 }
 @keyframes waveGentle{
-  0%,100%{transform:rotate(0)}
-  25%{transform:rotate(-18deg)}
-  50%{transform:rotate(2deg)}
-  75%{transform:rotate(-14deg)}
+  0%,100%{transform:rotate(-118deg)}
+  33%{transform:rotate(-136deg)} 66%{transform:rotate(-106deg)}
 }
 
 /* turn controls */

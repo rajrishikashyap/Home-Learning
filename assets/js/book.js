@@ -190,7 +190,7 @@ function initBook(){
         document.documentElement.classList.remove('flipping');
         applyCornerSize();
         syncPageA11y();
-        setMood(PLAN[pageToSpread(page)] || 'happy');
+        guideTo(pageToSpread(page));
         bumpIdleLife();
         staggerIn();
         paint();
@@ -209,7 +209,7 @@ function initBook(){
 
   applyCornerSize();
   syncPageA11y();
-  setMood(PLAN[pageToSpread(curPage())] || 'wave');
+  guideTo(pageToSpread(curPage()));
   paint();
   moveSprout();
 
@@ -219,7 +219,7 @@ function initBook(){
      site.css) and the book fades up only once it is actually built. */
   requestAnimationFrame(() => { bookEl.classList.add('ready'); staggerIn(); });
   startIdleLife();                     /* blinks, mood drift and the odd wave */
-  setTimeout(waveOnce, 900);           /* say hello once the book has settled */
+  /* the greeting is guideTo's, fired once the book has settled */
 }
 
 function resizeBook(){
@@ -311,55 +311,121 @@ const sBrows=document.getElementById('s-brows');
 const sBrowL=document.getElementById('s-browL');
 const sBrowR=document.getElementById('s-browR');
 
-/* ---------- Sprout's feelings ----------
- * Three expressions, plus a wave. They are deliberately few: a mascot that
- * cycles through eight subtly-different faces reads as noise, whereas three
- * distinct ones read as a character with moods.
+/* ---------- Sprout, the guide ----------
+ * Sprout's job is to get the reader through the book: greet them, say what the
+ * spread in front of them is, point down when there is more text below the
+ * fold, and nudge toward the next page when they have gone quiet. Clicking
+ * Sprout turns the page.
  *
- *   happy    — open grin, bright round eyes. Arrivals and good news.
- *   smile    — soft closed curve, eyes creased shut. The resting face.
- *   curious  — small round mouth, brows up, eyes wide. Questions and lists.
- *
- * `wave` is happy plus the arm, used to say hello.
+ * A pose is the body (arms, head tilt); a face is the mouth/eyes/brows. They are
+ * set together but stored apart, so "pointing while curious" is expressible.
  */
-const MOODS={
-  happy:  {mouth:'M104 161c8 12 24 12 32 0', brows:0, eyes:'normal',      tilt:0},
-  smile:  {mouth:'M109 164c5 6 13 6 18 0',   brows:0, eyes:'happyclosed', tilt:0},
-  curious:{mouth:'M115 163a5.5 5.5 0 1 0 11 0a5.5 5.5 0 1 0 -11 0',
-           brows:1, browL:'M87 121c6-5 14-4 20 2', browR:'M130 128c6-6 15-5 20 1',
-           eyes:'wide', tilt:-5},
-  wave:   {mouth:'M104 161c8 12 24 12 32 0', brows:0, eyes:'normal', tilt:0, wave:true}
+const FACES={
+  happy:  {mouth:'M104 161c8 12 24 12 32 0', brows:0, eyes:'normal'},
+  smile:  {mouth:'M107 143c7 10 19 10 26 0', brows:0, eyes:'happyclosed'},
+  curious:{mouth:'M114 142a6 6 0 1 0 12 0a6 6 0 1 0 -12 0',
+           brows:1, browL:'M85 94c7-6 17-5 23 2', browR:'M131 97c7-7 17-6 23 1', eyes:'wide'},
+  cheer:  {mouth:'M101 140c9 15 29 15 38 0', brows:1,
+           browL:'M86 92c7-5 17-4 23 1', browR:'M131 93c7-5 17-4 23 1', eyes:'happyclosed'}
 };
 
-/* One expression per spread. Arrivals wave; list-heavy spreads look curious;
-   the rest rest. Applied from turn.js's `turned` event. */
-const PLAN=['wave','smile','happy','curious','curious','smile','happy','smile','curious','wave'];
+/* One line and one pose per spread. Kept short — a speech bubble is a caption,
+   not a paragraph, and everything it says is already on the page beside it. */
+const GUIDE=[
+  {pose:'wave',    face:'happy',   say:"Hi! I'm Sprout. I'll show you around."},
+  {pose:'curious', face:'curious', say:"This is why we started."},
+  {pose:'smile',   face:'smile',   say:"Old wisdom, new tools."},
+  {pose:'read',    face:'smile',   say:"The quiet one in the room? That was me too."},
+  {pose:'point',   face:'happy',   say:"Everything English, in one place."},
+  {pose:'curious', face:'curious', say:"Four simple steps to begin."},
+  {pose:'happy',   face:'happy',   say:"Meet your tutor."},
+  {pose:'point',   face:'happy',   say:"One programme, one fee. No surprises."},
+  {pose:'read',    face:'smile',   say:"The house rules, in plain words."},
+  {pose:'cheer',   face:'cheer',   say:"That's the whole book. Shall we begin?"}
+];
 
-/* Idle drift. The page only changes when the reader turns it, which can be
-   minutes — so between turns Sprout works through the same three moods on its
-   own slow clock, and waves now and then. One driver, not two: the 3D mascot
-   used to run a competing random cycle of its own that overrode whatever the
-   page had just asked for. */
-const IDLE_MOODS=['smile','happy','curious','smile','happy'];
-let idleStep=0, idleTimer=null, waveTimer=null;
+const sproutSay = document.getElementById('sproutSay');
+const sproutHit = document.getElementById('sproutHit');
+const sayText   = sproutSay ? sproutSay.querySelector('span') : null;
+
+let idleTimer=null, waveTimer=null, sayTimer=null, nudgeTimer=null;
+
+function setPose(pose){ sprout.setAttribute('data-pose', pose); }
+
+function say(text, holdMs){
+  if(!sproutSay || !sayText) return;
+  clearTimeout(sayTimer);
+  sayText.textContent = text;
+  sproutSay.classList.add('on');
+  if(holdMs) sayTimer = setTimeout(()=>sproutSay.classList.remove('on'), holdMs);
+}
+function hush(){ if(sproutSay){ clearTimeout(sayTimer); sproutSay.classList.remove('on'); } }
+
+/* Arriving on a spread: greet, take the spread's pose, and say what it is. */
+function guideTo(spread){
+  const g = GUIDE[spread] || GUIDE[0];
+  setMood(g.face);
+  setPose(g.pose);
+  if(g.pose === 'wave' || g.pose === 'cheer') waveOnce();
+  say(g.say, 5200);
+  armNudge();
+}
+
+/* If the page has more text below the fold, Sprout looks down and says so
+   before it suggests moving on — otherwise it would hurry the reader past
+   half a page. */
+function pageHasMore(){
+  return visiblePages().some(pg => pg.classList.contains('has-more'));
+}
+
+/* Gone quiet: point at the next page and pulse. Re-armed by every turn. */
+function armNudge(){
+  clearTimeout(nudgeTimer);
+  if(reduce) return;
+  nudgeTimer = setTimeout(()=>{
+    if(document.hidden || animating()) { armNudge(); return; }
+    const last = pageToSpread(curPage()) >= SPREADS - 1;
+    if(last){ setPose('cheer'); setMood('cheer'); say("Ready when you are.", 5200); return; }
+    if(pageHasMore()){
+      setPose('read'); setMood('smile');
+      say("There's a little more below.", 4600);
+    } else {
+      setPose('point'); setMood('happy');
+      say("Turn the page when you're ready.", 4600);
+      sprout.classList.remove('nudging'); void sprout.offsetWidth; sprout.classList.add('nudging');
+      setTimeout(()=>sprout.classList.remove('nudging'), 2600);
+    }
+    armNudge();
+  }, 9000);
+}
 
 function startIdleLife(){
   clearInterval(idleTimer); clearInterval(waveTimer);
   /* Expressions are not motion — swapping a path changes shape with no travel,
-     so they run under reduced motion too. Only the idle WAVE slows down there,
-     because it is the one part that repeats on a timer forever. */
+     so they run under reduced motion too. Only the idle WAVE slows down there. */
   idleTimer=setInterval(()=>{
-    if(document.hidden) return;
-    setMood(IDLE_MOODS[idleStep++ % IDLE_MOODS.length], true);
+    if(document.hidden || animating()) return;
+    const g = GUIDE[pageToSpread(curPage())] || GUIDE[0];
+    /* drift between the spread's own face and a soft smile, so Sprout keeps
+       breathing without wandering off the expression the page asked for */
+    setMood(Math.random() < 0.5 ? g.face : 'smile', true);
   }, reduce ? 7000 : 5200);
-  waveTimer=setInterval(()=>{ if(!document.hidden) waveOnce(); }, reduce ? 26000 : 14000);
+  waveTimer=setInterval(()=>{ if(!document.hidden && !animating()) waveOnce(); }, reduce ? 26000 : 15000);
 }
+function bumpIdleLife(){ startIdleLife(); armNudge(); }
 
-/* Restart the drift clock whenever the reader turns a page, so the expression
-   the spread asked for gets its full interval on screen. Without this the idle
-   timer overwrites it mid-beat — the same two-drivers-fighting bug that was in
-   the 3D mascot, just moved up a layer. */
-function bumpIdleLife(){ startIdleLife(); }
+/* clicking Sprout is a real way to move on */
+if(sproutHit){
+  sproutHit.addEventListener('click', ()=>{
+    if(pageToSpread(curPage()) >= SPREADS - 1){ openModal(); return; }
+    turn(1);
+  });
+  sproutHit.addEventListener('mouseenter', ()=>{
+    const last = pageToSpread(curPage()) >= SPREADS - 1;
+    setPose(last ? 'cheer' : 'point');
+    say(last ? "Book a free assessment?" : "Click me to turn the page.", 3200);
+  });
+}
 
 function setEyes(kind){
   if(kind==='happyclosed'){
@@ -374,19 +440,17 @@ function setEyes(kind){
       '<circle cx="143" cy="138" r="2.8" fill="#fff"/>';
   }
 }
-function setMood(name, idle){
-  const m=MOODS[name]||MOODS.happy;
+function setMood(name){
+  const m=FACES[name]||FACES.happy;
   sMouth.setAttribute('d',m.mouth);
   sBrows.style.opacity=m.brows?1:0;
   if(m.brows){ if(m.browL)sBrowL.setAttribute('d',m.browL); if(m.browR)sBrowR.setAttribute('d',m.browR); }
   setEyes(m.eyes);
-  /* a curious head-tilt reads as thinking; the others sit straight */
-  sprout.style.setProperty('--tilt', (m.tilt||0)+'deg');
+  /* the curious face tilts the head; the rig does the rest */
+  sprout.style.setProperty('--tilt', name==='curious' ? '-7deg' : '0deg');
   if(window.Sprout3D) window.Sprout3D.mood(name);
-  if(m.wave) waveOnce();
-  /* arriving on a new spread is a greeting, whatever the mood asks for */
-  if(!idle && !m.wave) waveOnce();
 }
+
 function waveOnce(){
   if(window.Sprout3D){ window.Sprout3D.wave(); return; }
   /* Kept under reduced motion: CSS swaps in a gentler, slower swing (waveGentle)
@@ -403,13 +467,21 @@ const BOXW = 132;                 /* the canvas never changes size; CSS scales i
 function moveSprout(){
   const vp=viewport(), vw=vp.vw, vh=vp.vh;
   const r=bookEl.getBoundingClientRect();
-  if(r.width < 200){ sprout.style.opacity=0; return; }   /* book not sized yet */
+  if(r.width < 200){                                     /* book not sized yet */
+    sprout.style.opacity=0; hush();
+    if(sproutHit) sproutHit.hidden = true;
+    return;
+  }
   const PAD=10, MINW=54, MAXW = vw<1100 ? 112 : 150;
   const gutL=r.left, gutR=vw-r.right;
   const side = gutL >= gutR ? 'l' : 'r';          /* whichever margin is roomier */
   const own = side==='l' ? gutL : gutR;
   const w = Math.min(MAXW, own-PAD*2);
-  if(w < MINW){ sprout.style.opacity=0; return; } /* no margin (phones): step away */
+  if(w < MINW){                                   /* no margin (phones): step away */
+    sprout.style.opacity=0; hush();
+    if(sproutHit) sproutHit.hidden = true;
+    return;
+  }
   const hh = w*1.25;   /* rendered box is BOXW wide; w is reached by CSS scale */
   const cx = side==='l' ? (r.left - PAD - w) : (r.right + PAD);
   let cy = r.top + r.height*0.66 - hh*0.5;
@@ -420,6 +492,28 @@ function moveSprout(){
   sprout.style.setProperty('--face', side==='l' ? '1' : '-1');
   sprout.style.opacity = 1;
   if(window.Sprout3D) window.Sprout3D.face(side);
+
+  /* The bubble and the click target ride alongside rather than inside, because
+     anything inside inherits the mascot's scale — at the small end that would
+     shrink the text to nothing. Both are placed from the same numbers. */
+  const bw = 176, bh = 78;
+  if(sproutSay){
+    let bx = Math.round(cx + w/2 - bw/2);
+    bx = Math.max(10, Math.min(vw - bw - 10, bx));       /* never off-screen */
+    /* below Sprout: the turn arrows live at the book's vertical middle, which is
+       exactly where a bubble placed above would land in a margin this narrow */
+    let by = Math.round(cy + hh + 12);
+    if(by + bh > vh - 12) by = Math.round(cy - bh - 12);  /* flip up if it would clip */
+    sproutSay.style.setProperty('--bx', bx + 'px');
+    sproutSay.style.setProperty('--by', Math.max(72, by) + 'px');
+  }
+  if(sproutHit){
+    sproutHit.hidden = false;
+    sproutHit.style.setProperty('--hx', Math.round(cx) + 'px');
+    sproutHit.style.setProperty('--hy', Math.round(cy + hh*0.18) + 'px');
+    sproutHit.style.setProperty('--hw', Math.round(w) + 'px');
+    sproutHit.style.setProperty('--hh', Math.round(hh*0.72) + 'px');
+  }
 }
 
 /* Some viewers throttle requestAnimationFrame to a standstill, so anything the

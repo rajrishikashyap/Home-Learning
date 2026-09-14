@@ -123,38 +123,57 @@ Open by choice, not by oversight:
 - **`.turn-page .more-fade`.** Would have hidden the overflow hint on all 20
   pages once turn.js added `.turn-page` to every page.
 
-## The mascot
+## Sprout, the guide
 
-Sprout is **inline SVG**, not three.js. Three expressions, plus a wave:
+Sprout's job is to move the reader through the book: greet them, name the spread
+in front of them, look down when there is more text below the fold, and nudge
+toward the next page when they have gone quiet. **Clicking Sprout turns the
+page** — on the last spread it opens the assessment form instead.
 
-| | |
+### The rig
+
+Inline SVG, drawn in parts so every pose is one rotation about a named origin:
+
+| part | pivots at |
 |---|---|
-| `happy` | open grin, bright round eyes — arrivals and good news |
-| `smile` | soft closed curve, eyes creased shut — the resting face |
-| `curious` | small round mouth, brows up, eyes wide, head tilted — questions and lists |
+| `#s-head` | the neck (`50% 96%`) |
+| `#s-armL` / `#s-armR` | its own shoulder |
+| `#s-leaves` | the base of the stem |
 
-`PLAN` in `assets/js/book.js` assigns one per spread; `startIdleLife()` drifts
-between them every 5.2 s when the reader is sitting still, and waves every 14 s.
-Turning a page restarts that clock (`bumpIdleLife()`), so the expression a
-spread asked for always gets its full beat on screen.
+The arms are drawn **last**, after the head. Drawn before it, a raised arm
+disappears behind the head — which is what the first pass did, and why "wave"
+and "cheer" were indistinguishable from "smile".
 
-Three is a deliberate limit. A mascot cycling through eight subtly different
-faces reads as noise; three distinct ones read as a character with moods.
+Seven poses: `smile` `happy` `curious` `wave` `point` `cheer` `read`, driven by
+`data-pose` on `.sprout`. Four faces (`FACES` in `book.js`) set mouth, eyes and
+brows independently, so "pointing while curious" is expressible.
 
-### Why not the three.js build
+### What it says
 
-`assets/js/sprout-3d.js` and `vendor/three.module.js` are still in the repo but
-are **commented out in `index.html`** — uncomment both lines to restore them.
+`GUIDE` in `assets/js/book.js` holds one pose and one line per spread. The line
+appears in a bubble **below** Sprout. Above is the obvious place and was tried:
+the margin is only ~130 px wide, so a bubble wide enough to read overhangs into
+the book and lands straight on the next-page arrow. Covering the navigation is a
+bad trade for a caption.
 
-At the size Sprout actually renders (~110 px) the WebGL mascot's face did not
-resolve: the mouth geometry was invisible for `happy` and `smile`, leaving a
-grey blob with two dots, so the expressions the code was setting never reached
-the reader. The SVG is vector, so it reads at any size, costs 0 KB against
-three.js's 1.27 MB, and honours `prefers-reduced-motion` — which the WebGL
-version silently did not.
+The bubble and the click target are siblings of the mascot, not children —
+anything inside inherits its scale transform, which at the small end shrinks the
+text to nothing. All three are positioned from the same numbers in
+`moveSprout()`.
 
-It also removes a second driver: the 3D build ran its own random `MOOD_CYCLE`
-timer that overrode whatever expression the current spread had just requested.
+### Nudging
+
+After ~9 s without a turn, Sprout reacts to what is actually on screen:
+
+- page still has text below the fold → `read` pose, *"There's a little more below."*
+- page fully read → `point` pose with a pulsing arm, *"Turn the page when you're ready."*
+- last spread → `cheer`, *"Ready when you are."*
+
+Verified: the greeting fires on the cover, nothing waves mid-book, the finale
+cheers — identically with and without `prefers-reduced-motion`.
+
+Below ~900 px there is no margin to stand in, so Sprout, the bubble and the
+click target all withdraw together.
 
 ## Why it can look different on two computers
 

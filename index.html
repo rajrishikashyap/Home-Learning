@@ -387,103 +387,89 @@
   <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15l-1.4 5 5.1-1.3A10 10 0 1 0 12 2Zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .1-3.3-.9-2.8-1.2-4.5-4-4.7-4.2-.1-.2-1.1-1.4-1.1-2.7 0-1.3.7-1.9.9-2.2.2-.2.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.2.1.3 0 .5l-.4.5c-.2.2-.4.4-.2.7.2.4.9 1.4 1.9 2.3 1.3 1.1 2.3 1.4 2.6 1.6.3.1.5.1.6-.1l.7-.9c.2-.3.4-.2.6-.1l1.9.9c.2.1.4.2.4.3.1.1.1.6-.1 1.4Z"></path></svg>
 </a>
 
-<!-- Persistent navigator mascot: Sprout -->
-<div class="sprout" id="sprout">
+<!-- ===== SPROUT — the guide ===== -->
+<!-- Rigged so every pose is one rotation about a named origin: the head tilts at
+     the neck, each arm swings from its own shoulder. The arms are drawn LAST so a
+     raised one reads in front of the head rather than disappearing behind it. -->
+<div class="sprout" id="sprout" style="--tilt:0deg">
   <canvas id="sproutCanvas" style="display:none" aria-hidden="true"></canvas>
   <div class="idle">
-  <div class="hopper">
-  <svg viewBox="0 0 240 300" role="img" aria-label="Sprout, the Home Learning mascot">
-  <defs>
-    <clipPath id="s-clip"><path d="M120 74C80 74 52 108 52 152c0 26 11 47 26 61-8 15-14 33-16 49-1 6 4 10 10 10h96c6 0 11-4 10-10-2-16-8-34-16-49 15-14 26-35 26-61 0-44-28-78-68-78Z"></path></clipPath>
-    <radialGradient id="s-bodyg" cx="36%" cy="24%" r="82%">
-      <stop offset="0" stop-color="#fffefa"></stop><stop offset=".6" stop-color="#f8f2e4"></stop><stop offset="1" stop-color="#e9ddc4"></stop>
-    </radialGradient>
-    <radialGradient id="s-faceg" cx="34%" cy="24%" r="78%">
-      <stop offset="0" stop-color="#fff8ef"></stop><stop offset=".68" stop-color="#fbe8d5"></stop><stop offset="1" stop-color="#f0d5b9"></stop>
-    </radialGradient>
-    <linearGradient id="s-leafA" x1="0" y1="1" x2="1" y2="0">
-      <stop offset="0" stop-color="#5c9530"></stop><stop offset=".55" stop-color="#86c243"></stop><stop offset="1" stop-color="#bce27a"></stop>
-    </linearGradient>
-    <linearGradient id="s-leafB" x1="1" y1="1" x2="0" y2="0">
-      <stop offset="0" stop-color="#639f33"></stop><stop offset=".55" stop-color="#92cb4d"></stop><stop offset="1" stop-color="#c6e98b"></stop>
-    </linearGradient>
-    <linearGradient id="s-stemg" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#5f9a2e"></stop><stop offset=".45" stop-color="#8cc247"></stop><stop offset="1" stop-color="#639f33"></stop>
-    </linearGradient>
-    <radialGradient id="s-shadowg" cx="50%" cy="50%" r="50%">
-      <stop offset="0" stop-color="#1f3a33" stop-opacity=".42"></stop><stop offset="1" stop-color="#1f3a33" stop-opacity="0"></stop>
-    </radialGradient>
-  </defs>
+  <svg viewBox="0 0 240 300" role="img" aria-label="Sprout, your guide through the book">
+    <defs>
+      <radialGradient id="g-body" cx="34%" cy="20%" r="86%">
+        <stop offset="0" stop-color="#fffdf8"/><stop offset=".62" stop-color="#fdf4e4"/><stop offset="1" stop-color="#f0e2c9"/>
+      </radialGradient>
+      <radialGradient id="g-head" cx="32%" cy="22%" r="80%">
+        <stop offset="0" stop-color="#fffaf2"/><stop offset=".64" stop-color="#fdeeda"/><stop offset="1" stop-color="#f4dcc0"/>
+      </radialGradient>
+      <linearGradient id="g-leafA" x1="0" y1="1" x2="1" y2="0">
+        <stop offset="0" stop-color="#5d9a2f"/><stop offset=".55" stop-color="#8bc94a"/><stop offset="1" stop-color="#c2ea86"/>
+      </linearGradient>
+      <linearGradient id="g-leafB" x1="1" y1="1" x2="0" y2="0">
+        <stop offset="0" stop-color="#5f9f33"/><stop offset=".55" stop-color="#93cf52"/><stop offset="1" stop-color="#cbee94"/>
+      </linearGradient>
+      <radialGradient id="g-shadow"><stop offset="0" stop-color="#8a6a44" stop-opacity=".34"/><stop offset="1" stop-color="#8a6a44" stop-opacity="0"/></radialGradient>
+    </defs>
 
-  <ellipse id="s-shade" cx="120" cy="286" rx="54" ry="9" fill="url(#s-shadowg)"></ellipse>
+    <ellipse id="s-shade" cx="120" cy="288" rx="52" ry="8" fill="url(#g-shadow)"/>
 
-  <!-- the sprout on its head: stem sways, each leaf drifts on its own timing -->
-  <g id="s-leaves">
-    <path d="M120 80V50" stroke="url(#s-stemg)" stroke-width="7" stroke-linecap="round" fill="none"></path>
-    <g id="s-leafL">
-      <path d="M119 62c-7-12-3-28 11-36 7 13 2 30-11 36Z" fill="url(#s-leafA)"></path>
-      <path d="M118 60c2-12 6-21 12-29" stroke="#4a8024" stroke-width="1.5" fill="none" opacity=".45"></path>
-    </g>
-    <g id="s-leafR">
-      <path d="M121 68c8-11 22-15 34-9-6 12-21 17-34 9Z" fill="url(#s-leafB)"></path>
-      <path d="M123 67c6-6 15-9 25-10" stroke="#4a8024" stroke-width="1.5" fill="none" opacity=".4"></path>
-    </g>
-  </g>
-
-  <g id="s-torso">
-    <path d="M120 74C80 74 52 108 52 152c0 26 11 47 26 61-8 15-14 33-16 49-1 6 4 10 10 10h96c6 0 11-4 10-10-2-16-8-34-16-49 15-14 26-35 26-61 0-44-28-78-68-78Z" fill="url(#s-bodyg)" stroke="#e2d4b7" stroke-width="1.6"></path>
-    <g clip-path="url(#s-clip)">
-      <ellipse cx="120" cy="262" rx="76" ry="44" fill="#e6d7ba" opacity=".45"></ellipse>
-      <ellipse cx="84" cy="150" rx="28" ry="54" fill="#fffdf6" opacity=".45"></ellipse>
-      <path d="M50 214h140" stroke="#ded0b1" stroke-width="1.2" opacity=".55" fill="none"></path>
-      <path d="M104 250v22M136 250v22" stroke="#ded0b1" stroke-width="1.2" opacity=".45" fill="none"></path>
+    <g id="s-leaves">
+      <path d="M120 60V32" stroke="#6aa437" stroke-width="7" stroke-linecap="round" fill="none"/>
+      <g id="s-leafL"><path d="M118 44c-9-11-7-28 6-38 9 12 6 30-6 38Z" fill="url(#g-leafA)"/>
+        <path d="M117 42c1-11 4-20 8-28" stroke="#4d8526" stroke-width="1.6" fill="none" opacity=".45"/></g>
+      <g id="s-leafR"><path d="M122 50c10-10 26-11 37-3-8 11-25 14-37 3Z" fill="url(#g-leafB)"/>
+        <path d="M124 49c7-5 16-7 26-7" stroke="#4d8526" stroke-width="1.6" fill="none" opacity=".4"/></g>
     </g>
 
-    <!-- face -->
-    <ellipse cx="118" cy="146" rx="56" ry="58" fill="url(#s-faceg)"></ellipse>
-    <ellipse cx="118" cy="146" rx="56" ry="58" fill="none" stroke="#efd7bf" stroke-width="1.3"></ellipse>
-    <ellipse cx="97" cy="117" rx="27" ry="17" fill="#fff9f0" opacity=".55"></ellipse>
-    <ellipse cx="88" cy="161" rx="14" ry="9" fill="#f2b09d" opacity=".5"></ellipse>
-    <ellipse cx="150" cy="161" rx="14" ry="9" fill="#f2b09d" opacity=".5"></ellipse>
-
-    <g id="s-brows" opacity="0">
-      <path id="s-browL" d="M88 126c6-3 13-3 19 1" stroke="#b89b6a" stroke-width="3.5" stroke-linecap="round" fill="none"></path>
-      <path id="s-browR" d="M131 127c6-4 13-4 19-1" stroke="#b89b6a" stroke-width="3.5" stroke-linecap="round" fill="none"></path>
+    <g id="s-body">
+      <path d="M120 176c-30 0-46 20-48 44-1 16 2 30 6 40 2 6 7 9 13 9h58c6 0 11-3 13-9 4-10 7-24 6-40-2-24-18-44-48-44Z"
+            fill="url(#g-body)" stroke="#e6d6b8" stroke-width="1.8"/>
+      <path d="M96 232c8 5 16 7 24 7s16-2 24-7" stroke="#e8d9bd" stroke-width="1.6" fill="none" opacity=".8"/>
+      <ellipse cx="102" cy="272" rx="13" ry="7" fill="#f7ecd8" stroke="#e6d6b8" stroke-width="1.4"/>
+      <ellipse cx="138" cy="272" rx="13" ry="7" fill="#f7ecd8" stroke="#e6d6b8" stroke-width="1.4"/>
     </g>
-    <g id="s-eyes">
-      <ellipse cx="98" cy="142" rx="8.5" ry="11.5" fill="#2a2a26"></ellipse>
-      <ellipse cx="140" cy="142" rx="8.5" ry="11.5" fill="#2a2a26"></ellipse>
-      <circle cx="101" cy="138" r="2.8" fill="#fff"></circle>
-      <circle cx="143" cy="138" r="2.8" fill="#fff"></circle>
-    </g>
-    <path id="s-mouth" d="M107 164c6 8 18 8 24 0" stroke="#2a2a26" stroke-width="4" stroke-linecap="round" fill="none"></path>
 
-    <!-- resting arm -->
-    <path d="M56 178c-9 5-14 13-13 21" stroke="#e2d4b7" stroke-width="16" stroke-linecap="round" fill="none"></path>
-    <path d="M56 178c-9 5-14 13-13 21" stroke="#fbf6ea" stroke-width="12.5" stroke-linecap="round" fill="none"></path>
-    <circle cx="42" cy="202" r="9" fill="#fbf6ea" stroke="#e2d4b7" stroke-width="1.4"></circle>
-
-    <!-- waving arm: #s-arm keeps the slow idle wave, #s-hand does the greeting burst -->
-    <g id="s-arm">
-      <g id="s-hand">
-        <path d="M180 172c11-8 21-17 27-27" stroke="#e2d4b7" stroke-width="16" stroke-linecap="round" fill="none"></path>
-        <path d="M180 172c11-8 21-17 27-27" stroke="#fbf6ea" stroke-width="12.5" stroke-linecap="round" fill="none"></path>
-        <circle cx="209" cy="141" r="10" fill="#fbf6ea" stroke="#e2d4b7" stroke-width="1.4"></circle>
+    <g id="s-head">
+      <ellipse cx="120" cy="120" rx="64" ry="60" fill="url(#g-head)" stroke="#eddcc2" stroke-width="1.8"/>
+      <ellipse cx="94" cy="92" rx="28" ry="17" fill="#fffaf2" opacity=".6"/>
+      <ellipse cx="82" cy="140" rx="14" ry="9" fill="#f6a894" opacity=".55"/>
+      <ellipse cx="158" cy="140" rx="14" ry="9" fill="#f6a894" opacity=".55"/>
+      <g id="s-brows" opacity="0">
+        <path id="s-browL" d="M86 96c7-5 16-4 22 2" stroke="#c0a16c" stroke-width="3.6" stroke-linecap="round" fill="none"/>
+        <path id="s-browR" d="M132 98c7-6 16-5 22 1" stroke="#c0a16c" stroke-width="3.6" stroke-linecap="round" fill="none"/>
       </g>
+      <g id="s-eyes">
+        <ellipse cx="98" cy="120" rx="9" ry="12" fill="#332f2a"/>
+        <ellipse cx="142" cy="120" rx="9" ry="12" fill="#332f2a"/>
+        <circle cx="101.5" cy="115" r="3.1" fill="#fff"/>
+        <circle cx="145.5" cy="115" r="3.1" fill="#fff"/>
+        <circle cx="95" cy="125" r="1.5" fill="#fff" opacity=".7"/>
+        <circle cx="139" cy="125" r="1.5" fill="#fff" opacity=".7"/>
+      </g>
+      <path id="s-mouth" d="M107 143c7 10 19 10 26 0" stroke="#332f2a" stroke-width="4" stroke-linecap="round" fill="none"/>
     </g>
-  </g>
+
+    <g id="s-armL">
+      <path d="M80 190c-20 6-34 18-42 34" stroke="#e6d6b8" stroke-width="16" stroke-linecap="round" fill="none"/>
+      <path d="M80 190c-20 6-34 18-42 34" stroke="#fdf4e4" stroke-width="12.5" stroke-linecap="round" fill="none"/>
+      <circle cx="36" cy="226" r="11.5" fill="#fdf4e4" stroke="#e6d6b8" stroke-width="1.6"/>
+    </g>
+    <g id="s-armR">
+      <path d="M160 190c20 6 34 18 42 34" stroke="#e6d6b8" stroke-width="16" stroke-linecap="round" fill="none"/>
+      <path d="M160 190c20 6 34 18 42 34" stroke="#fdf4e4" stroke-width="12.5" stroke-linecap="round" fill="none"/>
+      <circle cx="204" cy="226" r="11.5" fill="#fdf4e4" stroke="#e6d6b8" stroke-width="1.6"/>
+    </g>
   </svg>
-  </div>
   </div>
 </div>
 
-<!-- The mascot runs as inline SVG (see #sprout below), not three.js.
-     At its rendered size (~110px) the WebGL build's face was illegible: the
-     mouth geometry did not resolve at all for happy/smile, leaving a blob with
-     two dots, while the SVG reads cleanly at any size, costs 0 KB against
-     three.js's 1.27 MB, and honours prefers-reduced-motion.
-     To restore the 3D version, uncomment both lines below. -->
-<!-- <script>window.__resources = { three: new URL("vendor/three.module.js", document.baseURI).href };</script> -->
+<!-- What Sprout is saying. A sibling rather than a child, so the mascot's scale
+     transform does not shrink the text with it. Positioned alongside the mascot
+     by moveSprout(). Decorative: everything it says is already on the page. -->
+<div class="sprout-say" id="sproutSay" aria-hidden="true"><span></span></div>
+<button class="sprout-hit" id="sproutHit" type="button">Turn to the next page</button>
+
+<script>window.__resources = { three: new URL("vendor/three.module.js", document.baseURI).href };</script> -->
 <script src="vendor/jquery.min.js"></script>
 <script src="vendor/turn.js"></script>
 <script src="assets/js/book.js"></script>
