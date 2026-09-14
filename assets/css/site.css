@@ -113,7 +113,7 @@
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth;overflow-x:hidden}
 body{overflow-x:hidden}
-#turn-fwrappers{pointer-events:none}
+/* turn.js 4 sets pointer-events:none on its own fold layer inline */
 body{
   font-family:"Nunito Sans",system-ui,sans-serif;color:var(--ink);line-height:1.68;
   /* warm, light ground: oat in the centre falling to blush at the edges */
@@ -267,14 +267,28 @@ html.flipping .more-fade:after{animation-play-state:paused!important}
 .running-head span:first-child{white-space:nowrap}
 .folio{flex:none;order:99;text-align:center;padding:8px 0 14px;font-size:12px;color:var(--ink-faint);font-style:italic}
 
-/* ---------- Page flip: turn.js 3 ----------
- * turn.js wraps every .page in a .turn-page-wrapper and positions both
- * absolutely, so the book only has to supply the paper surface and the
- * stacking context. The fold itself, its shadow and its gradients are drawn by
- * the library into #turn-fwrappers, which lives outside the book's overflow. */
-.book .turn-page{background:var(--paper);overflow:hidden;border-radius:var(--r-sm)}
-.book .page{width:100%;height:100%;background:var(--paper)}   /* never a bare page: kills the pre-init flash */
-.book .turn-page-wrapper{backface-visibility:hidden}
+/* ---------- Page flip: turn.js 4.1.0 ----------
+ * turn.js 4 wraps every page in a .page-wrapper (3.x called it
+ * .turn-page-wrapper) and positions both absolutely, so the book only supplies
+ * the paper surface. The fold, its shadow and its gradients are drawn by the
+ * library into a detached layer it appends to the book itself. */
+.book .page{width:100%;height:100%;background:var(--paper);overflow:hidden;
+  border-radius:var(--r-sm)}   /* never a bare page: kills the pre-init flash */
+.book .page-wrapper{backface-visibility:hidden}
+/* turn.js 4 draws its own gutter shading into this; ours is the .spine element */
+.book > .shadow{border-radius:var(--r-lg);pointer-events:none}
+
+/* The cover is a `hard` page: turn.js 4 swings it as one rigid board instead of
+   folding it, which is what a front cover does. That effect sizes its two faces
+   from jQuery's .width() — the CONTENT width, padding excluded — and then clips
+   them, so any horizontal padding on the page itself becomes a bare strip down
+   the outer edge with the next page showing through it. (At 1440px that was a
+   92px strip: two 46px clamp() paddings.) So a hard page carries no padding of
+   its own; the same gutter is set on the pane inside it instead. */
+.book .page.hard{padding-left:0;padding-right:0}
+.book .page.hard > .page-inner,
+.book .page.hard > .running-head,
+.book .page.hard > .folio{padding-left:clamp(24px,3.2vw,48px);padding-right:clamp(24px,3.2vw,48px)}
 
 /* The cover stands alone on the right, the way a real book sits when you open
    the front board. The half beside it is that board — not a missing page. It
@@ -680,11 +694,10 @@ table.mini th{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color
   border-right:2px solid currentColor;border-bottom:2px solid currentColor;opacity:.45;
   transform:translateX(-50%) rotate(45deg);animation:nudge 1.9s ease-in-out infinite}
 @keyframes nudge{0%,100%{transform:translateX(-50%) rotate(45deg) translateY(0)}50%{transform:translateX(-50%) rotate(45deg) translateY(3px)}}
-/* hide the hint only on the leaf that is mid-fold: turn.js moves that page
-   into #turn-fwrappers, and a chevron on a page in flight reads as a glitch.
-   (This was `.turn-page .more-fade` — inert under the old engine, but turn.js
-   puts .turn-page on every page, which would have hidden all 20 of them.) */
-#turn-fwrappers .more-fade{display:none}
+/* A chevron on a page in flight reads as a glitch. turn.js 4 moves the folding
+   page into a detached layer with no stable id, so this is scoped to the flip
+   itself rather than to where the page happens to live during it. */
+html.flipping .more-fade{display:none}
 @media (prefers-reduced-motion:reduce){.more-fade:after{animation:none}}
 
 /* keyboard focus */

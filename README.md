@@ -2,9 +2,10 @@
 
 Online English tuition for Classes 4–8 (CBSE and SEBA/ASSEB) — Guwahati.
 
-The site is a **book**: 20 designed pages you turn, rather than a page you scroll.
-The page-turn is [turn.js 3](https://www.turnjs.com/); scrolling the wheel reads
-the current page first and turns the leaf only once its text has bottomed out.
+The site is a **book**: 19 designed pages you turn, rather than a page you scroll.
+The page-turn is [turn.js 4.1.0](https://www.turnjs.com/); scrolling the wheel
+reads the current page first and turns the leaf only once its text has bottomed
+out.
 
 ## Running locally
 
@@ -21,7 +22,7 @@ look at it; the served version is the source of truth.
 ## Layout
 
 ```
-index.html                  markup for all 20 pages
+index.html                  markup for all 19 pages
 check-my-browser.html       standalone environment report (see below)
 assets/css/fonts.css        @font-face — Quicksand, Nunito Sans, Caveat
 assets/css/site.css         design tokens, motion primitives, components
@@ -30,6 +31,7 @@ assets/js/sprout-3d.js      retired 3D mascot (disabled — see The mascot)
 assets/fonts/               Quicksand, Nunito Sans, Caveat (variable woff2)
 assets/img/                 logo + philosophy plate
 vendor/                     third-party libraries
+tools/build-standalone.py   inlines everything into the single-file build
 ```
 
 This was originally a single self-extracting 9.5 MB HTML bundle. It has been
@@ -38,24 +40,21 @@ than fetched from Google Fonts and jsDelivr.
 
 ## ⚠️ turn.js licensing
 
-`vendor/turn.js` is the **turn.js 3rd release**. Its license
-(`vendor/turn.js.LICENSE.txt`) states:
+`vendor/turn.js` is the **turn.js 4th release** (4.1.0). The 4th release is the
+commercially-licensed one; the freely-redistributable BSD release is the 3rd,
+whose terms restrict use to
 
-> Any redistribution, use, or modification is done solely for personal
-> benefit and not for any commercial purpose or for monetary gain.
+> ...personal benefit and not for any commercial purpose or for monetary gain.
 
-**Home Learning is a commercial service.** Using turn.js 3 here is outside
-those terms. The commercially-licensed version is the turn.js 4th release,
-sold at <https://www.turnjs.com/>.
+**Home Learning is a paid tuition service**, so neither release covers it
+without a licence bought from <https://www.turnjs.com/>. The file in `vendor/`
+is a copy supplied for this project; `vendor/turn.js.LICENSE.txt` is a pointer
+to the canonical terms, not a grant.
 
-The build in `vendor/turn.js` is the npm `turn.js@1.0.5` source — a CommonJS
-fork whose `package.json` claims MIT, but which **ships the original
-non-commercial license file inside the package**. That `package.json` does not
-grant rights the original author did not give. Treat this as unresolved until
-a 4th-release license is purchased, or the library is replaced.
-
-A commercially-safe alternative is [`page-flip`](https://www.npmjs.com/package/page-flip)
-(StPageFlip) — MIT, zero dependencies.
+Treat this as unresolved until a licence is purchased, or the library is
+replaced. A commercially-safe alternative is
+[`page-flip`](https://www.npmjs.com/package/page-flip) (StPageFlip) — MIT, zero
+dependencies.
 
 ## Known issues
 
@@ -88,8 +87,8 @@ Open by choice, not by oversight:
 - **Drop caps became unreadable after the font change.** A capital "I" in
   Quicksand is a bare vertical stroke; on Our Story it sat directly above the
   pull-quote's rule and read as a second border. Initials are set in Caveat now.
-- **Blank spread before the cover.** Pages had no background until turn.js added
-  `.turn-page`, so the bare book showed for a beat on load. Pages now carry
+- **Blank spread before the cover.** Pages had no background until turn.js had
+  wrapped them, so the bare book showed for a beat on load. Pages now carry
   `--paper` from the start, and `#flipbook` fades up only once turn.js has
   actually laid them out (`.ready`).
 - **Turn arrows stacked on top of each other.** `.turn.prev`/`.turn.next` lost
@@ -120,8 +119,9 @@ Open by choice, not by oversight:
 - **Dead mascot code wired up.** `PLAN`/`setMood()` were written and never
   called; Sprout's expression now follows the spread.
 - **Reduced motion in the 3D mascot.** `reduceM` was declared and never used.
-- **`.turn-page .more-fade`.** Would have hidden the overflow hint on all 20
-  pages once turn.js added `.turn-page` to every page.
+- **A `.more-fade` rule keyed to turn.js's own class.** Would have hidden the
+  overflow hint on every page once turn.js wrapped them. It is keyed to
+  `html.flipping` now, which is ours and means what it says.
 
 ## Sprout, the guide
 
@@ -261,8 +261,8 @@ vanishing.
 
 ## Page-turn engine
 
-turn.js owns `#flipbook` and its 19 `.page` children, wraps each in a
-`.turn-page-wrapper`, and keeps ~6 pages in the DOM at a time.
+turn.js 4.1.0 owns `#flipbook` and its 19 `.page` children, wraps each in a
+`.page-wrapper`, and keeps ~6 pages in the DOM at a time.
 
 **There is no blank endpaper.** The book opens on its cover, which stands alone
 on the right the way a real one does; the half beside it is the inside board,
@@ -277,65 +277,70 @@ view 0  = page 1          cover (alone, right)
 view i  = pages 2i, 2i+1  the nine designed spreads
 ```
 
-Forcing the cover to span both halves was tried and reverted: turn.js nests each
-page two levels below its wrapper and sizes it inline from half the book width,
-and the fold geometry is computed from that same width, so the override moved
-the wrapper but not the page and exposed the page behind it.
-
 `assets/js/book.js` supplies sizing, the scroll gesture, the spread mapping and
 the corner-size clamp.
 
+### The cover is a `hard` page
+
+The 4th release understands a `hard` page — a rigid board that swings as one
+piece instead of folding — so the cover now carries `class="hard"` and opens
+like a front board rather than bending like paper. That is also what closed out
+an older workaround: forcing the cover to span both halves had been tried and
+reverted, because turn.js nests each page two levels below its wrapper and sizes
+it inline from half the book width.
+
+One thing the `hard` effect needs from the CSS. It sizes its two faces from
+jQuery's `.width()` — the **content** width, padding excluded — and then clips
+them. Any horizontal padding on the page element itself therefore becomes a bare
+strip down the outer edge with the next page showing through it; at 1440px that
+was a 92px strip (two 46px `clamp()` paddings). So `.book .page.hard` carries no
+padding of its own and the same gutter is set on the panes inside it.
+
+`autoCenter` is deliberately left off. It would shift the whole book a quarter
+width left so the lone cover sat centred, but here the half beside the cover is
+drawn as the front board, so the book should stay put.
+
 ### Smoothness
 
-`vendor/turn.js` carries one local patch, marked `PATCHED` in the source.
-Upstream drives the fold with `setInterval(f, 30)` and advances progress by a
-fixed 30 ms step per tick. On a 60 Hz display a 30 ms timer beats against the
-16.7 ms vsync — some frames get two updates, some none — and the fold's real
+The 3rd release drove the fold with `setInterval(f, 30)` and advanced progress
+by a fixed 30 ms step per tick. On a 60 Hz display a 30 ms timer beats against
+the 16.7 ms vsync — some frames get two updates, some none — and the fold's real
 duration drifts with timer lag because progress is counted in ticks rather than
-elapsed time. It now runs on `requestAnimationFrame` and derives progress from
-the timestamp.
+elapsed time. That needed a local patch. **The 4th release does it upstream**:
+`window.requestAnim` is `requestAnimationFrame`, and `animatef` derives progress
+from the elapsed timestamp. `vendor/turn.js` is now stock, with no patches.
 
 Everything else that competes for the main thread mid-fold is stood down via
 `html.flipping`: the paper texture, the topbar's `backdrop-filter`, and the
 mascot's seven infinite SVG transform animations, which are *not*
 compositor-accelerated and tick on the same thread turn.js is using.
 
-One page turn, headless (a relative signal, not real-device numbers):
+Frame cadence, 5 trials each, both builds measured back-to-back on the same
+headless box (a relative signal, not real-device numbers):
 
-| | before | after |
+| one turn | turn.js 3 (patched) | turn.js 4.1.0 |
 |---|---|---|
-| p95 frame gap | 26.3 ms | **19.1 ms** |
-| worst frame | 54.4 ms | **28.9 ms** |
-| frames > 20 ms | 7 | **3** |
-| frames > 33 ms | 2 | **0** |
+| cover → spread 1, median gap | 24.6 ms | **16.8 ms** |
+| cover → spread 1, p95 gap | 39.5 ms | **30.5 ms** |
+| cover → spread 1, frames > 33 ms | 4 | **1.8** |
+| spread 4 → 5, median gap | 23.7 ms | 26.3 ms |
+| spread 4 → 5, p95 gap | 45.3 ms | 48.8 ms |
 
-Across 5 trials of 4 turns, the rAF driver alone cut long frames from a median
-of 26 to 18. Duration went 820 → 650 ms, which does not change the drop rate
-(measured: 16/16/15 long frames at 820/650/520 ms) but reads closer to a real
-page.
+The cover is markedly smoother, which is the `hard` board doing less work than a
+fold. Mid-book, the two are level — the differences there are inside the run-to-
+run spread of this machine.
 
 **The remaining limit is structural.** turn.js recomputes fold geometry in
-JavaScript every frame — 237 `transform()` calls and 482 `css()` writes per turn
+JavaScript every frame — 92 `transform()` calls and 384 `css()` writes per turn
 at 650 ms. A CSS-transform engine does zero per-frame JS and hands the whole
 animation to the compositor. If the turn still isn't smooth enough on a weak
-GPU, that is the trade to revisit, not more tuning.
-
-### Cost
-
-turn.js animates with `setInterval(fn, 30)` and recomputes the fold geometry in
-JavaScript on every tick. One page turn measures **177 `transform()` calls and
-398 `css()` writes**. The CSS-3D engine it replaced did zero per-frame JS work —
-one class toggle, then the compositor interpolated a single `rotateY`.
-
-On desktop this is not visible; in headless testing turn.js actually measured
-*smoother* than the old engine, because software rasterising a 1180px
-`preserve-3d` surface is expensive. On low-end Android the ~400 main-thread
-style writes per turn are where it would show. This has not been measured on a
-real phone.
+GPU, that is the trade to revisit, not more tuning. On desktop it is not
+visible; on low-end Android those main-thread style writes are where it would
+show, and that has not been measured on a real phone.
 
 ## Standalone build
 
-`Home-Learning-standalone.html` is a single 1.67 MB file with fonts, artwork,
+`Home-Learning-standalone.html` is a single 1.41 MB file with fonts, artwork,
 jQuery and turn.js inlined as data URIs. It opens straight from disk with no
 server — for previewing and for sending to someone.
 
@@ -344,4 +349,8 @@ mascot runs instead. Every call site already guards on `window.Sprout3D`, so
 that is a supported path rather than a fallback hack.
 
 Rebuild it after changing the site — it does not update itself. `index.html`
-is the source of truth.
+is the source of truth:
+
+```bash
+python3 tools/build-standalone.py
+```

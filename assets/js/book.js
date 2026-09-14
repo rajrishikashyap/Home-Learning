@@ -1,14 +1,21 @@
-/* ---------- The book: page turning (turn.js 3) ----------
+/* ---------- The book: page turning (turn.js 4.1.0) ----------
  *
- * turn.js owns #flipbook and its 21 .page children. It wraps each page in a
- * .turn-page-wrapper, keeps ~6 pages in the DOM at a time, and drives the fold
+ * turn.js owns #flipbook and its 19 .page children. It wraps each page in a
+ * .page-wrapper, keeps a few pages in the DOM at a time, and drives the fold
  * itself. Everything below is the glue: sizing, the scroll gesture, and keeping
  * the dots / nav pill / mascot / overflow hint in step with turn.js's events.
+ *
+ * The 4th release drives its own frames off requestAnimationFrame (see
+ * `window.requestAnim` / `animatef` in vendor/turn.js), which is why the hand
+ * written rAF patch the 3rd release needed is gone. It also understands a
+ * `hard` page — a rigid board that swings as one piece instead of folding —
+ * which is what the cover now is.
  *
  * turn.js starts a drag-fold only within `cornerSize` of a corner (see
  * _cornerActivated), so the middle of a page stays free for the scrolling
  * .page-inner panes. On touch we shrink that zone further — at phone widths a
- * 100px corner would swallow most of a swipe.
+ * 100px corner would swallow most of a swipe. A hard page ignores the vertical
+ * half of that and takes the whole left or right edge, as a board does.
  */
 const $book   = jQuery('#flipbook');
 const bookEl  = document.getElementById('flipbook');
@@ -34,15 +41,9 @@ const SPREAD_LABELS = ['Cover','The idea','Roots & philosophy','Our story',
 
 let bookInited = false, fitWidth = 0;
 
-/* spread i (0-based, as the nav pill uses) is turn.js page 2 + i*2 */
-/* Page 1 is the blank leading endpaper. It is not content — it exists so the
-   cover lands on an EVEN page, which is what puts it on the left of its spread.
-   turn.js pairs even pages leftward, so without it every designed pair in the
-   book would re-pair one page out (the plate would face the wrong text, the
-   portrait the wrong bio). It stays in the DOM and is never reachable: FIRST is
-   the floor for every navigation path, including the wheel and the keyboard,
-   which previously bypassed the disabled prev button and landed on view [0,1]
-   — a half-empty spread with nothing in it. */
+/* Page 1 is the cover, and it is the floor for every navigation path — the
+   wheel and the keyboard included, which used to bypass the disabled prev
+   button and land on view [0,1], a half-empty spread with nothing in it. */
 const FIRST = 1;                                /* the cover */
 const spreadToPage = i => { i = Math.max(0, Math.min(SPREADS - 1, i)); return i === 0 ? 1 : i * 2; };
 const pageToSpread = p => p <= 1 ? 0 : Math.min(SPREADS - 1, Math.floor(p / 2));
@@ -177,14 +178,28 @@ function initBook(){
     width:        size.w,
     height:       size.h,
     display:      isNarrow() ? 'single' : 'double',
-    page:         FIRST,                  /* open on the cover, not the endpaper */
+    page:         FIRST,                  /* open on the cover */
     duration:     FLIP_MS,
     acceleration: true,
     elevation:    50,                     /* the lift before the page swings */
     gradients:    !jQuery.isTouch,        /* the fold shading costs too much on touch */
+    /* Drag a fold from either bottom corner. Not the top ones: the running head
+       sits there, and a top-corner grab on a trackpad kept starting a fold when
+       someone meant to scroll the pane. (The cover ignores this and takes its
+       whole outer edge — turn.js gives a hard page 'l'/'r' instead.) */
+    turnCorners:  'bl,br',
+    /* Left at false on purpose. turn.js would shift the whole book a quarter
+       width left so the lone cover sat centred; here the half beside the cover
+       is drawn as the front board (.book.at-cover in site.css), so the book
+       should stay put and the board should stay where the board is. */
+    autoCenter:   false,
     when: {
-      turning: function(){
+      turning: function(e, page){
         document.documentElement.classList.add('flipping');
+        /* The front board has to be under the cover before the cover starts
+           moving, not after it lands — otherwise flipping back to the cover
+           swings it onto a bare half and the board pops in at the end. */
+        bookEl.classList.toggle('at-cover', page <= 1 && !isNarrow());
       },
       turned: function(e, page){
         document.documentElement.classList.remove('flipping');
