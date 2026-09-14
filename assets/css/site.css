@@ -357,59 +357,111 @@ html.flipping .more-fade:after{animation-play-state:paused!important}
 .sprout.is3d svg{display:none}
 .sprout.is3d{filter:none}
 
-/* the rig */
-.sprout [id]{transform-box:fill-box}
-#s-armL{transform-origin:96% 6%}
-#s-armR{transform-origin:4% 6%}
-#s-head{transform-origin:50% 96%}
-#s-leaves{transform-origin:50% 100%}
-#s-body{transform-origin:50% 100%}
-#s-armL,#s-armR,#s-head{transition:transform 620ms var(--spring)}
+/* The rig. Every origin is a real coordinate in the drawing (transform-box:
+   view-box) rather than a percentage of a bounding box — a bbox moves when the
+   art inside it moves, and a joint must not. Each arm is two bones: the shoulder
+   turns the whole arm, the elbow turns the forearm and the hand together. The
+   elbow is what stops a raised arm reading as a plank; a real arm folds before
+   it reaches. */
+.sprout [id]{transform-box:view-box}
+#s-armL{transform-origin:79px 203px}
+#s-armR{transform-origin:161px 203px}
+#s-foreL,#s-handL{transform-origin:66px 231px}   /* forearm and hand share the elbow */
+#s-foreR,#s-handR{transform-origin:174px 231px}
+#s-head{transform-origin:120px 182px}
+#s-leaves{transform-origin:120px 66px}
+#s-body{transform-origin:120px 282px}
+#s-eyes{transform-origin:120px 136px}
+#s-armL,#s-armR,#s-foreL,#s-foreR,#s-handL,#s-handR,#s-head{
+  transition:transform 620ms var(--spring)}
 
-/* poses — the arm angles stop short of the head so a raised arm stays visible */
-.sprout[data-pose="smile"]   #s-armL{transform:rotate(6deg)}
-.sprout[data-pose="smile"]   #s-armR{transform:rotate(-6deg)}
-.sprout[data-pose="happy"]   #s-armL{transform:rotate(14deg)}
-.sprout[data-pose="happy"]   #s-armR{transform:rotate(-14deg)}
-.sprout[data-pose="curious"] #s-armL{transform:rotate(4deg)}
-.sprout[data-pose="curious"] #s-armR{transform:rotate(-38deg)}
-.sprout[data-pose="wave"]    #s-armR{transform:rotate(-118deg)}
-.sprout[data-pose="point"]   #s-armR{transform:rotate(-80deg)}
-.sprout[data-pose="cheer"]   #s-armL{transform:rotate(112deg)}
-.sprout[data-pose="cheer"]   #s-armR{transform:rotate(-112deg)}
-.sprout[data-pose="read"]    #s-armR{transform:rotate(-58deg)}
+/* The arms carry no contour of their own, on purpose. Two bones plus the disc
+   that fills the elbow cannot share a single outline — a stroke drawn per piece
+   reappears straight across the join the moment the elbow bends, which is what
+   made the old arm read as a doll's ball joint. Separation comes from a soft
+   cast shadow instead, and the head and body wear a light contour rather than a
+   hard one so the whole figure reads as one material. */
+.s-arm{filter:drop-shadow(0 2.5px 3px rgba(150,116,74,.3))}
+.s-palm,.s-thumb{fill:url(#g-hand)}
+.s-knuck path{stroke:#dcc7a0;stroke-width:1.7;fill:none;stroke-linecap:round;opacity:.75}
+
+/* poses: a shoulder angle and an elbow angle */
+.sprout[data-pose="rest"]    #s-armL,.sprout[data-pose="rest"] #s-armR{transform:rotate(0)}
+.sprout[data-pose="smile"]   #s-armL{transform:rotate(7deg)}
+.sprout[data-pose="smile"]   #s-armR{transform:rotate(-7deg)}
+.sprout[data-pose="happy"]   #s-armL{transform:rotate(18deg)}
+.sprout[data-pose="happy"]   #s-armR{transform:rotate(-18deg)}
+.sprout[data-pose="happy"]   #s-foreL,.sprout[data-pose="happy"] #s-handL{transform:rotate(16deg)}
+.sprout[data-pose="happy"]   #s-foreR,.sprout[data-pose="happy"] #s-handR{transform:rotate(-16deg)}
+.sprout[data-pose="curious"] #s-armL{transform:rotate(8deg)}
+.sprout[data-pose="curious"] #s-armR{transform:rotate(-30deg)}
+.sprout[data-pose="curious"] #s-foreR,.sprout[data-pose="curious"] #s-handR{transform:rotate(-58deg)}
+.sprout[data-pose="wave"]    #s-armR{transform:rotate(-96deg)}
+.sprout[data-pose="wave"]    #s-foreR,.sprout[data-pose="wave"] #s-handR{transform:rotate(-52deg)}
+.sprout[data-pose="point"]   #s-armR{transform:rotate(-58deg)}
+.sprout[data-pose="point"]   #s-foreR,.sprout[data-pose="point"] #s-handR{transform:rotate(-40deg)}
+.sprout[data-pose="cheer"]   #s-armL{transform:rotate(96deg)}
+.sprout[data-pose="cheer"]   #s-armR{transform:rotate(-96deg)}
+.sprout[data-pose="cheer"]   #s-foreL,.sprout[data-pose="cheer"] #s-handL{transform:rotate(34deg)}
+.sprout[data-pose="cheer"]   #s-foreR,.sprout[data-pose="cheer"] #s-handR{transform:rotate(-34deg)}
+.sprout[data-pose="read"]    #s-armL{transform:rotate(-30deg)}
+.sprout[data-pose="read"]    #s-foreL,.sprout[data-pose="read"] #s-handL{transform:rotate(62deg)}
+.sprout[data-pose="read"]    #s-armR{transform:rotate(30deg)}
+.sprout[data-pose="read"]    #s-foreR,.sprout[data-pose="read"] #s-handR{transform:rotate(-62deg)}
+.sprout[data-pose="think"]   #s-armR{transform:rotate(-52deg)}
+.sprout[data-pose="think"]   #s-foreR,.sprout[data-pose="think"] #s-handR{transform:rotate(-86deg)}
 
 /* idle life: a slow float, a breath, leaves that drift, and a blink */
 .sprout .idle{transform-origin:50% 88%;animation:floaty 5.6s ease-in-out infinite}
 @keyframes floaty{0%,100%{transform:translateY(0) rotate(-1.4deg)}50%{transform:translateY(-9px) rotate(1.4deg)}}
-#s-eyes{transform-origin:center;animation:blink 5.4s infinite}
+#s-eyes{animation:blink 5.4s infinite}
 @keyframes blink{0%,94%,100%{transform:scaleY(1)}96%,98%{transform:scaleY(.1)}}
 #s-body{animation:breathe 3.9s ease-in-out infinite}
 @keyframes breathe{0%,100%{transform:scale(1,1)}50%{transform:scale(1.02,.985)}}
 #s-leaves{animation:sway 4.6s ease-in-out infinite}
 @keyframes sway{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(4deg)}}
-#s-leafL{transform-origin:100% 100%;animation:leafL 3.2s ease-in-out infinite}
+#s-leafL{transform-origin:118px 50px;animation:leafL 3.2s ease-in-out infinite}
 @keyframes leafL{0%,100%{transform:rotate(0)}50%{transform:rotate(-8deg)}}
-#s-leafR{transform-origin:0% 100%;animation:leafR 3.8s ease-in-out infinite}
+#s-leafR{transform-origin:122px 56px;animation:leafR 3.8s ease-in-out infinite}
 @keyframes leafR{0%,100%{transform:rotate(0)}50%{transform:rotate(9deg)}}
 
-/* the greeting: the arm swings and the whole body leans into it, because an arm
-   moving on a still body reads like a puppet rather than a creature */
-.sprout.waving #s-armR{animation:waveArm 1.5s cubic-bezier(.36,.07,.19,.97)}
-@keyframes waveArm{
-  0%,100%{transform:rotate(-118deg)}
-  15%{transform:rotate(-146deg)} 30%{transform:rotate(-100deg)}
-  45%{transform:rotate(-142deg)} 60%{transform:rotate(-104deg)}
-  75%{transform:rotate(-136deg)} 90%{transform:rotate(-112deg)}
-}
-.sprout.waving .idle{animation:leanIn 1.5s cubic-bezier(.36,.07,.19,.97)}
+/* The greeting. The swing lives in the FOREARM and the wrist, not the shoulder —
+   that is how an arm actually waves, and it is the difference between a greeting
+   and a metronome. The shoulder only breathes a few degrees underneath it, and
+   the whole body leans in, because an arm moving on a still body reads like a
+   puppet rather than a creature. */
+.sprout.waving #s-armR{animation:waveUpper 1.6s cubic-bezier(.36,.07,.19,.97)}
+.sprout.waving #s-foreR{animation:waveFore 1.6s cubic-bezier(.36,.07,.19,.97)}
+.sprout.waving #s-handR{animation:waveHand 1.6s cubic-bezier(.36,.07,.19,.97)}
+@keyframes waveUpper{0%,100%{transform:rotate(-96deg)}25%{transform:rotate(-104deg)}65%{transform:rotate(-99deg)}}
+@keyframes waveFore{
+  0%,100%{transform:rotate(-52deg)}
+  15%{transform:rotate(-16deg)} 30%{transform:rotate(-62deg)}
+  45%{transform:rotate(-20deg)} 60%{transform:rotate(-58deg)}
+  75%{transform:rotate(-26deg)} 90%{transform:rotate(-54deg)}}
+@keyframes waveHand{
+  0%,100%{transform:rotate(-52deg)}
+  15%{transform:rotate(-8deg)}  30%{transform:rotate(-70deg)}
+  45%{transform:rotate(-12deg)} 60%{transform:rotate(-66deg)}
+  75%{transform:rotate(-18deg)} 90%{transform:rotate(-56deg)}}
+/* Cheering already has both arms up, so it waves from where it is rather than
+   dropping to the one-arm greeting. Same swing, smaller arc, cheer's own angles
+   at each end so nothing snaps on the first or last frame. */
+.sprout[data-pose="cheer"].waving #s-armR{animation:none}
+.sprout[data-pose="cheer"].waving #s-foreR,
+.sprout[data-pose="cheer"].waving #s-handR{animation:waveCheer 1.6s cubic-bezier(.36,.07,.19,.97)}
+@keyframes waveCheer{
+  0%,100%{transform:rotate(-34deg)}
+  18%{transform:rotate(-6deg)}  36%{transform:rotate(-42deg)}
+  54%{transform:rotate(-10deg)} 72%{transform:rotate(-38deg)}}
+.sprout.waving .idle{animation:leanIn 1.6s cubic-bezier(.36,.07,.19,.97)}
 @keyframes leanIn{0%,100%{transform:rotate(0) translateY(0)}
   30%{transform:rotate(-4deg) translateY(-6px)} 60%{transform:rotate(-2deg) translateY(-3px)}}
 
-/* the nudge: when the reader has gone quiet, the pointing arm pulses toward the
-   book instead of just sitting there */
-.sprout.nudging #s-armR{animation:nudgeArm 1.25s ease-in-out 2}
-@keyframes nudgeArm{0%,100%{transform:rotate(-80deg)}50%{transform:rotate(-94deg)}}
+/* the nudge: when the reader has gone quiet, the pointing hand beckons toward
+   the book instead of just sitting there — again from the elbow, not the shoulder */
+.sprout.nudging #s-foreR,.sprout.nudging #s-handR{animation:nudgeFore 1.25s ease-in-out 2}
+@keyframes nudgeFore{0%,100%{transform:rotate(-40deg)}50%{transform:rotate(-16deg)}}
 
 /* ---------- what Sprout is saying ---------- */
 .sprout-say{
@@ -447,15 +499,27 @@ html.flipping .more-fade:after{animation-play-state:paused!important}
 @media (prefers-reduced-motion:reduce){
   .sprout .idle,.sprout #s-body,.sprout #s-leaves,.sprout #s-leafL,.sprout #s-leafR{
     animation:none!important;transform:none!important}
-  .sprout.waving #s-armR{animation:waveGentle 1.6s ease-in-out}
-  .sprout.nudging #s-armR{animation:none}
+  /* The greeting stays — a hand waving hello is brief and local, not the kind of
+     large sweeping travel the setting is about — but it slows down, loses the
+     body lean, and swings through a third of the arc. */
+  .sprout.waving #s-armR{animation:none}
+  .sprout.waving #s-foreR,.sprout.waving #s-handR{animation:waveGentle 1.8s ease-in-out}
+  /* Cheer's own wave out-specifies the rule above, so it needs saying again here
+     or it would keep the full-speed swing under this setting. */
+  .sprout[data-pose="cheer"].waving #s-foreR,
+  .sprout[data-pose="cheer"].waving #s-handR{animation:waveGentleCheer 1.8s ease-in-out}
+  .sprout.nudging #s-foreR,.sprout.nudging #s-handR{animation:none}
   .sprout.waving .idle{animation:none}
   #s-eyes{animation:blink 6s infinite}
   .sprout-say{transition:opacity .2s linear}
 }
 @keyframes waveGentle{
-  0%,100%{transform:rotate(-118deg)}
-  33%{transform:rotate(-136deg)} 66%{transform:rotate(-106deg)}
+  0%,100%{transform:rotate(-52deg)}
+  33%{transform:rotate(-34deg)} 66%{transform:rotate(-56deg)}
+}
+@keyframes waveGentleCheer{
+  0%,100%{transform:rotate(-34deg)}
+  33%{transform:rotate(-20deg)} 66%{transform:rotate(-38deg)}
 }
 
 /* turn controls */

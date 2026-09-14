@@ -462,59 +462,111 @@ html.flipping .more-fade:after{animation-play-state:paused!important}
 .sprout.is3d svg{display:none}
 .sprout.is3d{filter:none}
 
-/* the rig */
-.sprout [id]{transform-box:fill-box}
-#s-armL{transform-origin:96% 6%}
-#s-armR{transform-origin:4% 6%}
-#s-head{transform-origin:50% 96%}
-#s-leaves{transform-origin:50% 100%}
-#s-body{transform-origin:50% 100%}
-#s-armL,#s-armR,#s-head{transition:transform 620ms var(--spring)}
+/* The rig. Every origin is a real coordinate in the drawing (transform-box:
+   view-box) rather than a percentage of a bounding box — a bbox moves when the
+   art inside it moves, and a joint must not. Each arm is two bones: the shoulder
+   turns the whole arm, the elbow turns the forearm and the hand together. The
+   elbow is what stops a raised arm reading as a plank; a real arm folds before
+   it reaches. */
+.sprout [id]{transform-box:view-box}
+#s-armL{transform-origin:79px 203px}
+#s-armR{transform-origin:161px 203px}
+#s-foreL,#s-handL{transform-origin:66px 231px}   /* forearm and hand share the elbow */
+#s-foreR,#s-handR{transform-origin:174px 231px}
+#s-head{transform-origin:120px 182px}
+#s-leaves{transform-origin:120px 66px}
+#s-body{transform-origin:120px 282px}
+#s-eyes{transform-origin:120px 136px}
+#s-armL,#s-armR,#s-foreL,#s-foreR,#s-handL,#s-handR,#s-head{
+  transition:transform 620ms var(--spring)}
 
-/* poses — the arm angles stop short of the head so a raised arm stays visible */
-.sprout[data-pose="smile"]   #s-armL{transform:rotate(6deg)}
-.sprout[data-pose="smile"]   #s-armR{transform:rotate(-6deg)}
-.sprout[data-pose="happy"]   #s-armL{transform:rotate(14deg)}
-.sprout[data-pose="happy"]   #s-armR{transform:rotate(-14deg)}
-.sprout[data-pose="curious"] #s-armL{transform:rotate(4deg)}
-.sprout[data-pose="curious"] #s-armR{transform:rotate(-38deg)}
-.sprout[data-pose="wave"]    #s-armR{transform:rotate(-118deg)}
-.sprout[data-pose="point"]   #s-armR{transform:rotate(-80deg)}
-.sprout[data-pose="cheer"]   #s-armL{transform:rotate(112deg)}
-.sprout[data-pose="cheer"]   #s-armR{transform:rotate(-112deg)}
-.sprout[data-pose="read"]    #s-armR{transform:rotate(-58deg)}
+/* The arms carry no contour of their own, on purpose. Two bones plus the disc
+   that fills the elbow cannot share a single outline — a stroke drawn per piece
+   reappears straight across the join the moment the elbow bends, which is what
+   made the old arm read as a doll's ball joint. Separation comes from a soft
+   cast shadow instead, and the head and body wear a light contour rather than a
+   hard one so the whole figure reads as one material. */
+.s-arm{filter:drop-shadow(0 2.5px 3px rgba(150,116,74,.3))}
+.s-palm,.s-thumb{fill:url(#g-hand)}
+.s-knuck path{stroke:#dcc7a0;stroke-width:1.7;fill:none;stroke-linecap:round;opacity:.75}
+
+/* poses: a shoulder angle and an elbow angle */
+.sprout[data-pose="rest"]    #s-armL,.sprout[data-pose="rest"] #s-armR{transform:rotate(0)}
+.sprout[data-pose="smile"]   #s-armL{transform:rotate(7deg)}
+.sprout[data-pose="smile"]   #s-armR{transform:rotate(-7deg)}
+.sprout[data-pose="happy"]   #s-armL{transform:rotate(18deg)}
+.sprout[data-pose="happy"]   #s-armR{transform:rotate(-18deg)}
+.sprout[data-pose="happy"]   #s-foreL,.sprout[data-pose="happy"] #s-handL{transform:rotate(16deg)}
+.sprout[data-pose="happy"]   #s-foreR,.sprout[data-pose="happy"] #s-handR{transform:rotate(-16deg)}
+.sprout[data-pose="curious"] #s-armL{transform:rotate(8deg)}
+.sprout[data-pose="curious"] #s-armR{transform:rotate(-30deg)}
+.sprout[data-pose="curious"] #s-foreR,.sprout[data-pose="curious"] #s-handR{transform:rotate(-58deg)}
+.sprout[data-pose="wave"]    #s-armR{transform:rotate(-96deg)}
+.sprout[data-pose="wave"]    #s-foreR,.sprout[data-pose="wave"] #s-handR{transform:rotate(-52deg)}
+.sprout[data-pose="point"]   #s-armR{transform:rotate(-58deg)}
+.sprout[data-pose="point"]   #s-foreR,.sprout[data-pose="point"] #s-handR{transform:rotate(-40deg)}
+.sprout[data-pose="cheer"]   #s-armL{transform:rotate(96deg)}
+.sprout[data-pose="cheer"]   #s-armR{transform:rotate(-96deg)}
+.sprout[data-pose="cheer"]   #s-foreL,.sprout[data-pose="cheer"] #s-handL{transform:rotate(34deg)}
+.sprout[data-pose="cheer"]   #s-foreR,.sprout[data-pose="cheer"] #s-handR{transform:rotate(-34deg)}
+.sprout[data-pose="read"]    #s-armL{transform:rotate(-30deg)}
+.sprout[data-pose="read"]    #s-foreL,.sprout[data-pose="read"] #s-handL{transform:rotate(62deg)}
+.sprout[data-pose="read"]    #s-armR{transform:rotate(30deg)}
+.sprout[data-pose="read"]    #s-foreR,.sprout[data-pose="read"] #s-handR{transform:rotate(-62deg)}
+.sprout[data-pose="think"]   #s-armR{transform:rotate(-52deg)}
+.sprout[data-pose="think"]   #s-foreR,.sprout[data-pose="think"] #s-handR{transform:rotate(-86deg)}
 
 /* idle life: a slow float, a breath, leaves that drift, and a blink */
 .sprout .idle{transform-origin:50% 88%;animation:floaty 5.6s ease-in-out infinite}
 @keyframes floaty{0%,100%{transform:translateY(0) rotate(-1.4deg)}50%{transform:translateY(-9px) rotate(1.4deg)}}
-#s-eyes{transform-origin:center;animation:blink 5.4s infinite}
+#s-eyes{animation:blink 5.4s infinite}
 @keyframes blink{0%,94%,100%{transform:scaleY(1)}96%,98%{transform:scaleY(.1)}}
 #s-body{animation:breathe 3.9s ease-in-out infinite}
 @keyframes breathe{0%,100%{transform:scale(1,1)}50%{transform:scale(1.02,.985)}}
 #s-leaves{animation:sway 4.6s ease-in-out infinite}
 @keyframes sway{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(4deg)}}
-#s-leafL{transform-origin:100% 100%;animation:leafL 3.2s ease-in-out infinite}
+#s-leafL{transform-origin:118px 50px;animation:leafL 3.2s ease-in-out infinite}
 @keyframes leafL{0%,100%{transform:rotate(0)}50%{transform:rotate(-8deg)}}
-#s-leafR{transform-origin:0% 100%;animation:leafR 3.8s ease-in-out infinite}
+#s-leafR{transform-origin:122px 56px;animation:leafR 3.8s ease-in-out infinite}
 @keyframes leafR{0%,100%{transform:rotate(0)}50%{transform:rotate(9deg)}}
 
-/* the greeting: the arm swings and the whole body leans into it, because an arm
-   moving on a still body reads like a puppet rather than a creature */
-.sprout.waving #s-armR{animation:waveArm 1.5s cubic-bezier(.36,.07,.19,.97)}
-@keyframes waveArm{
-  0%,100%{transform:rotate(-118deg)}
-  15%{transform:rotate(-146deg)} 30%{transform:rotate(-100deg)}
-  45%{transform:rotate(-142deg)} 60%{transform:rotate(-104deg)}
-  75%{transform:rotate(-136deg)} 90%{transform:rotate(-112deg)}
-}
-.sprout.waving .idle{animation:leanIn 1.5s cubic-bezier(.36,.07,.19,.97)}
+/* The greeting. The swing lives in the FOREARM and the wrist, not the shoulder —
+   that is how an arm actually waves, and it is the difference between a greeting
+   and a metronome. The shoulder only breathes a few degrees underneath it, and
+   the whole body leans in, because an arm moving on a still body reads like a
+   puppet rather than a creature. */
+.sprout.waving #s-armR{animation:waveUpper 1.6s cubic-bezier(.36,.07,.19,.97)}
+.sprout.waving #s-foreR{animation:waveFore 1.6s cubic-bezier(.36,.07,.19,.97)}
+.sprout.waving #s-handR{animation:waveHand 1.6s cubic-bezier(.36,.07,.19,.97)}
+@keyframes waveUpper{0%,100%{transform:rotate(-96deg)}25%{transform:rotate(-104deg)}65%{transform:rotate(-99deg)}}
+@keyframes waveFore{
+  0%,100%{transform:rotate(-52deg)}
+  15%{transform:rotate(-16deg)} 30%{transform:rotate(-62deg)}
+  45%{transform:rotate(-20deg)} 60%{transform:rotate(-58deg)}
+  75%{transform:rotate(-26deg)} 90%{transform:rotate(-54deg)}}
+@keyframes waveHand{
+  0%,100%{transform:rotate(-52deg)}
+  15%{transform:rotate(-8deg)}  30%{transform:rotate(-70deg)}
+  45%{transform:rotate(-12deg)} 60%{transform:rotate(-66deg)}
+  75%{transform:rotate(-18deg)} 90%{transform:rotate(-56deg)}}
+/* Cheering already has both arms up, so it waves from where it is rather than
+   dropping to the one-arm greeting. Same swing, smaller arc, cheer's own angles
+   at each end so nothing snaps on the first or last frame. */
+.sprout[data-pose="cheer"].waving #s-armR{animation:none}
+.sprout[data-pose="cheer"].waving #s-foreR,
+.sprout[data-pose="cheer"].waving #s-handR{animation:waveCheer 1.6s cubic-bezier(.36,.07,.19,.97)}
+@keyframes waveCheer{
+  0%,100%{transform:rotate(-34deg)}
+  18%{transform:rotate(-6deg)}  36%{transform:rotate(-42deg)}
+  54%{transform:rotate(-10deg)} 72%{transform:rotate(-38deg)}}
+.sprout.waving .idle{animation:leanIn 1.6s cubic-bezier(.36,.07,.19,.97)}
 @keyframes leanIn{0%,100%{transform:rotate(0) translateY(0)}
   30%{transform:rotate(-4deg) translateY(-6px)} 60%{transform:rotate(-2deg) translateY(-3px)}}
 
-/* the nudge: when the reader has gone quiet, the pointing arm pulses toward the
-   book instead of just sitting there */
-.sprout.nudging #s-armR{animation:nudgeArm 1.25s ease-in-out 2}
-@keyframes nudgeArm{0%,100%{transform:rotate(-80deg)}50%{transform:rotate(-94deg)}}
+/* the nudge: when the reader has gone quiet, the pointing hand beckons toward
+   the book instead of just sitting there — again from the elbow, not the shoulder */
+.sprout.nudging #s-foreR,.sprout.nudging #s-handR{animation:nudgeFore 1.25s ease-in-out 2}
+@keyframes nudgeFore{0%,100%{transform:rotate(-40deg)}50%{transform:rotate(-16deg)}}
 
 /* ---------- what Sprout is saying ---------- */
 .sprout-say{
@@ -552,15 +604,27 @@ html.flipping .more-fade:after{animation-play-state:paused!important}
 @media (prefers-reduced-motion:reduce){
   .sprout .idle,.sprout #s-body,.sprout #s-leaves,.sprout #s-leafL,.sprout #s-leafR{
     animation:none!important;transform:none!important}
-  .sprout.waving #s-armR{animation:waveGentle 1.6s ease-in-out}
-  .sprout.nudging #s-armR{animation:none}
+  /* The greeting stays — a hand waving hello is brief and local, not the kind of
+     large sweeping travel the setting is about — but it slows down, loses the
+     body lean, and swings through a third of the arc. */
+  .sprout.waving #s-armR{animation:none}
+  .sprout.waving #s-foreR,.sprout.waving #s-handR{animation:waveGentle 1.8s ease-in-out}
+  /* Cheer's own wave out-specifies the rule above, so it needs saying again here
+     or it would keep the full-speed swing under this setting. */
+  .sprout[data-pose="cheer"].waving #s-foreR,
+  .sprout[data-pose="cheer"].waving #s-handR{animation:waveGentleCheer 1.8s ease-in-out}
+  .sprout.nudging #s-foreR,.sprout.nudging #s-handR{animation:none}
   .sprout.waving .idle{animation:none}
   #s-eyes{animation:blink 6s infinite}
   .sprout-say{transition:opacity .2s linear}
 }
 @keyframes waveGentle{
-  0%,100%{transform:rotate(-118deg)}
-  33%{transform:rotate(-136deg)} 66%{transform:rotate(-106deg)}
+  0%,100%{transform:rotate(-52deg)}
+  33%{transform:rotate(-34deg)} 66%{transform:rotate(-56deg)}
+}
+@keyframes waveGentleCheer{
+  0%,100%{transform:rotate(-34deg)}
+  33%{transform:rotate(-20deg)} 66%{transform:rotate(-38deg)}
 }
 
 /* turn controls */
@@ -1250,68 +1314,112 @@ html.flipping .more-fade{display:none}
   <div class="idle">
   <svg viewBox="0 0 240 300" role="img" aria-label="Sprout, your guide through the book">
     <defs>
-      <radialGradient id="g-body" cx="34%" cy="20%" r="86%">
-        <stop offset="0" stop-color="#fffdf8"/><stop offset=".62" stop-color="#fdf4e4"/><stop offset="1" stop-color="#f0e2c9"/>
+      <radialGradient id="g-head" gradientUnits="userSpaceOnUse" cx="96" cy="92" r="118">
+        <stop offset="0" stop-color="#fffefb"/><stop offset=".55" stop-color="#fdf3e2"/>
+        <stop offset="1" stop-color="#ecd9ba"/>
       </radialGradient>
-      <radialGradient id="g-head" cx="32%" cy="22%" r="80%">
-        <stop offset="0" stop-color="#fffaf2"/><stop offset=".64" stop-color="#fdeeda"/><stop offset="1" stop-color="#f4dcc0"/>
+      <!-- userSpaceOnUse throughout. With the default objectBoundingBox every part
+           gets its own ramp, so the tones meet at a seam wherever two parts touch
+           and the figure reads as pieces bolted together. One ramp for the lot. -->
+      <radialGradient id="g-body" gradientUnits="userSpaceOnUse" cx="96" cy="182" r="185">
+        <stop offset="0" stop-color="#fffdf8"/><stop offset=".6" stop-color="#fcf3e3"/>
+        <stop offset="1" stop-color="#f0e2c8"/>
       </radialGradient>
-      <linearGradient id="g-leafA" x1="0" y1="1" x2="1" y2="0">
-        <stop offset="0" stop-color="#5d9a2f"/><stop offset=".55" stop-color="#8bc94a"/><stop offset="1" stop-color="#c2ea86"/>
+      <radialGradient id="g-limb" gradientUnits="userSpaceOnUse" cx="96" cy="182" r="185">
+        <stop offset="0" stop-color="#fffdf8"/><stop offset=".6" stop-color="#fcf3e3"/>
+        <stop offset="1" stop-color="#f0e2c8"/>
+      </radialGradient>
+      <linearGradient id="g-leafA" x1="0" y1="1" x2=".9" y2="0">
+        <stop offset="0" stop-color="#4f8d28"/><stop offset=".5" stop-color="#7cc23f"/>
+        <stop offset="1" stop-color="#bfe87f"/>
       </linearGradient>
-      <linearGradient id="g-leafB" x1="1" y1="1" x2="0" y2="0">
-        <stop offset="0" stop-color="#5f9f33"/><stop offset=".55" stop-color="#93cf52"/><stop offset="1" stop-color="#cbee94"/>
+      <linearGradient id="g-leafB" x1="1" y1="1" x2=".1" y2="0">
+        <stop offset="0" stop-color="#53952c"/><stop offset=".5" stop-color="#85c948"/>
+        <stop offset="1" stop-color="#c8ee8e"/>
       </linearGradient>
-      <radialGradient id="g-shadow"><stop offset="0" stop-color="#8a6a44" stop-opacity=".34"/><stop offset="1" stop-color="#8a6a44" stop-opacity="0"/></radialGradient>
+      <!-- The hands need a ramp of their own. A userSpaceOnUse gradient resolves in
+           the local space of whatever references it, and each hand sits inside a
+           translate() out to the wrist — so against the figure-wide ramp they were
+           sampling 205 units from its centre, past the last stop, and came out a
+           full shade darker than the forearm they are attached to. This one is in
+           hand space, matched to the forearm's tone at the wrist. -->
+      <linearGradient id="g-hand" gradientUnits="userSpaceOnUse" x1="0" y1="-8" x2="0" y2="26">
+        <stop offset="0" stop-color="#fdf8ec"/><stop offset="1" stop-color="#f4e8d2"/>
+      </linearGradient>
+      <radialGradient id="g-cheek"><stop offset="0" stop-color="#f79a86" stop-opacity=".6"/>
+        <stop offset="1" stop-color="#f79a86" stop-opacity="0"/></radialGradient>
+      <radialGradient id="g-shadow"><stop offset="0" stop-color="#8a6a44" stop-opacity=".32"/>
+        <stop offset="1" stop-color="#8a6a44" stop-opacity="0"/></radialGradient>
+      <radialGradient id="g-neck" cx="50%" cy="0%" r="70%">
+        <stop offset="0" stop-color="#d6bd93" stop-opacity=".5"/>
+        <stop offset="1" stop-color="#d6bd93" stop-opacity="0"/></radialGradient>
     </defs>
-
-    <ellipse id="s-shade" cx="120" cy="288" rx="52" ry="8" fill="url(#g-shadow)"/>
-
-    <g id="s-leaves">
-      <path d="M120 60V32" stroke="#6aa437" stroke-width="7" stroke-linecap="round" fill="none"/>
-      <g id="s-leafL"><path d="M118 44c-9-11-7-28 6-38 9 12 6 30-6 38Z" fill="url(#g-leafA)"/>
-        <path d="M117 42c1-11 4-20 8-28" stroke="#4d8526" stroke-width="1.6" fill="none" opacity=".45"/></g>
-      <g id="s-leafR"><path d="M122 50c10-10 26-11 37-3-8 11-25 14-37 3Z" fill="url(#g-leafB)"/>
-        <path d="M124 49c7-5 16-7 26-7" stroke="#4d8526" stroke-width="1.6" fill="none" opacity=".4"/></g>
-    </g>
-
+  
+    <ellipse id="s-shade" cx="120" cy="288" rx="54" ry="8.5" fill="url(#g-shadow)"/>
+  
     <g id="s-body">
-      <path d="M120 176c-30 0-46 20-48 44-1 16 2 30 6 40 2 6 7 9 13 9h58c6 0 11-3 13-9 4-10 7-24 6-40-2-24-18-44-48-44Z"
-            fill="url(#g-body)" stroke="#e6d6b8" stroke-width="1.8"/>
-      <path d="M96 232c8 5 16 7 24 7s16-2 24-7" stroke="#e8d9bd" stroke-width="1.6" fill="none" opacity=".8"/>
-      <ellipse cx="102" cy="272" rx="13" ry="7" fill="#f7ecd8" stroke="#e6d6b8" stroke-width="1.4"/>
-      <ellipse cx="138" cy="272" rx="13" ry="7" fill="#f7ecd8" stroke="#e6d6b8" stroke-width="1.4"/>
+      <ellipse cx="99" cy="277" rx="15.5" ry="8.5" fill="#fbf2e2" stroke="#e7d5b4" stroke-width="1.5"/>
+      <ellipse cx="141" cy="277" rx="15.5" ry="8.5" fill="#fbf2e2" stroke="#e7d5b4" stroke-width="1.5"/>
+      <path d="M120 170c-27 0-44 17-47 42-2 17 0 33 4 45 2 7 8 11 15 11h56c7 0 13-4 15-11 4-12 6-28 4-45-3-25-20-42-47-42Z"
+            fill="url(#g-body)" stroke="#e7d5b4" stroke-width="1.6"/>
+      <path d="M94 236c8 6 17 9 26 9s18-3 26-9" stroke="#e8d7b8" stroke-width="1.7" fill="none"
+            opacity=".7" stroke-linecap="round"/>
+      <ellipse cx="120" cy="178" rx="48" ry="20" fill="url(#g-neck)"/>
     </g>
-
+  
     <g id="s-head">
-      <ellipse cx="120" cy="120" rx="64" ry="60" fill="url(#g-head)" stroke="#eddcc2" stroke-width="1.8"/>
-      <ellipse cx="94" cy="92" rx="28" ry="17" fill="#fffaf2" opacity=".6"/>
-      <ellipse cx="82" cy="140" rx="14" ry="9" fill="#f6a894" opacity=".55"/>
-      <ellipse cx="158" cy="140" rx="14" ry="9" fill="#f6a894" opacity=".55"/>
+      <ellipse cx="120" cy="124" rx="67" ry="63" fill="url(#g-head)" stroke="#e7d5b4" stroke-width="1.6"/>
+      <ellipse cx="94" cy="92" rx="32" ry="19" fill="#fffdf8" opacity=".5" transform="rotate(-18 94 92)"/>
+      <path d="M183 110a67 63 0 0 1-23 64" stroke="#f7e8cd" stroke-width="5.5" fill="none"
+            opacity=".8" stroke-linecap="round"/>
+      <ellipse cx="77" cy="154" rx="16" ry="10" fill="url(#g-cheek)"/>
+      <ellipse cx="163" cy="154" rx="16" ry="10" fill="url(#g-cheek)"/>
       <g id="s-brows" opacity="0">
-        <path id="s-browL" d="M86 96c7-5 16-4 22 2" stroke="#c0a16c" stroke-width="3.6" stroke-linecap="round" fill="none"/>
-        <path id="s-browR" d="M132 98c7-6 16-5 22 1" stroke="#c0a16c" stroke-width="3.6" stroke-linecap="round" fill="none"/>
+        <path id="s-browL" d="M85 110c8-6 18-5 25 2" stroke="#bb9c66" stroke-width="4.2" stroke-linecap="round" fill="none"/>
+        <path id="s-browR" d="M130 112c8-7 18-6 25 1" stroke="#bb9c66" stroke-width="4.2" stroke-linecap="round" fill="none"/>
       </g>
       <g id="s-eyes">
-        <ellipse cx="98" cy="120" rx="9" ry="12" fill="#332f2a"/>
-        <ellipse cx="142" cy="120" rx="9" ry="12" fill="#332f2a"/>
-        <circle cx="101.5" cy="115" r="3.1" fill="#fff"/>
-        <circle cx="145.5" cy="115" r="3.1" fill="#fff"/>
-        <circle cx="95" cy="125" r="1.5" fill="#fff" opacity=".7"/>
-        <circle cx="139" cy="125" r="1.5" fill="#fff" opacity=".7"/>
+        <ellipse cx="97" cy="136" rx="11" ry="13.5" fill="#2f2a26"/>
+        <ellipse cx="143" cy="136" rx="11" ry="13.5" fill="#2f2a26"/>
+        <circle cx="101.5" cy="130" r="3.9" fill="#fff"/>
+        <circle cx="147.5" cy="130" r="3.9" fill="#fff"/>
+        <circle cx="93" cy="141.5" r="2" fill="#fff" opacity=".65"/>
+        <circle cx="139" cy="141.5" r="2" fill="#fff" opacity=".65"/>
       </g>
-      <path id="s-mouth" d="M107 143c7 10 19 10 26 0" stroke="#332f2a" stroke-width="4" stroke-linecap="round" fill="none"/>
+      <path id="s-mouth" d="M105 160c9 13 21 13 30 0" stroke="#2f2a26" stroke-width="4.6"
+            stroke-linecap="round" stroke-linejoin="round" fill="none"/>
     </g>
-
-    <g id="s-armL">
-      <path d="M80 190c-20 6-34 18-42 34" stroke="#e6d6b8" stroke-width="16" stroke-linecap="round" fill="none"/>
-      <path d="M80 190c-20 6-34 18-42 34" stroke="#fdf4e4" stroke-width="12.5" stroke-linecap="round" fill="none"/>
-      <circle cx="36" cy="226" r="11.5" fill="#fdf4e4" stroke="#e6d6b8" stroke-width="1.6"/>
+  
+    <g id="s-leaves">
+      <path d="M120 66V38" stroke="#5f9a30" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+      <g id="s-leafL">
+        <path d="M118 50c-11-12-9-31 5-42 10 13 8 33-5 42Z" fill="url(#g-leafA)"/>
+        <path d="M117.5 47c.5-12 3.5-22 7.5-31" stroke="#3f7520" stroke-width="1.7" fill="none" opacity=".45"/>
+      </g>
+      <g id="s-leafR">
+        <path d="M122 56c11-11 29-12 41-3-9 12-28 15-41 3Z" fill="url(#g-leafB)"/>
+        <path d="M124.5 54.5c8-6 18-8 28-8" stroke="#3f7520" stroke-width="1.7" fill="none" opacity=".4"/>
+      </g>
     </g>
-    <g id="s-armR">
-      <path d="M160 190c20 6 34 18 42 34" stroke="#e6d6b8" stroke-width="16" stroke-linecap="round" fill="none"/>
-      <path d="M160 190c20 6 34 18 42 34" stroke="#fdf4e4" stroke-width="12.5" stroke-linecap="round" fill="none"/>
-      <circle cx="204" cy="226" r="11.5" fill="#fdf4e4" stroke="#e6d6b8" stroke-width="1.6"/>
+  
+    <!-- Arms last, so a raised hand is never swallowed by the head.
+         The disc at each elbow is the whole trick for the joint: two bones end in
+         semicircular caps, and once the elbow bends those two semicircles no longer
+         close the circle — they leave a wedge-shaped notch that reads exactly like
+         a doll's ball joint. A disc of the joint radius, in the arm's own space so
+         the bend never moves it, fills that wedge at any angle. Same fill, same
+         user-space ramp, so it is invisible. -->
+    <g id="s-armL" class="s-arm">
+      <path d="M69 198C67.9 200.4 64.7 207.8 62.7 212.7C60.8 217.6 58.3 224.9 57.4 227.3A9.4 9.4 0 0 1 74.6 234.7C75.7 232.5 78.9 225.7 81.3 221.3C83.6 216.8 87.7 210.2 89 208A11.2 11.2 0 0 1 69 198Z" fill="url(#g-limb)"/>
+      <g id="s-foreL"><path d="M57 228.2C56.3 231 53.9 239.5 52.8 244.9C51.7 250.3 50.8 257.9 50.4 260.5A7.7 7.7 0 0 1 65.6 263.5C66.2 261.1 67.7 254.1 69.2 249.1C70.8 244.2 74 236.4 75 233.8A9.4 9.4 0 0 1 57 228.2Z" fill="url(#g-limb)"/></g>
+      <circle cx="66" cy="231" r="9.4" fill="url(#g-limb)"/>
+      <g id="s-handL"><g transform="translate(58 262) rotate(10)"><g class="s-hand"><path class="s-thumb" d="M-9.8 2.2c-4.7-1-8.2 1.6-8.5 5.7-.3 4.1 2.8 7 7 6.5 3.4-.4 5.4-2.7 5.5-6.1.1-3.2-1.2-5.5-4-6.1Z"/><path class="s-palm" d="M0-3.4c-8 0-12.8 3.7-13.2 10-.3 5 1 9.7 3.7 12.9 2.4 2.9 5.6 4.4 9.5 4.4s7.1-1.5 9.5-4.4c2.7-3.2 4-7.9 3.7-12.9C12.8.3 8-3.4 0-3.4Z"/><g class="s-knuck"><path d="M-5.2 20.6c-.8-2.7-1.1-5.6-.9-8.4"/><path d="M0 21.2c-.4-2.9-.4-5.9 0-8.8"/><path d="M5.2 20.6c.8-2.7 1.1-5.6.9-8.4"/></g></g></g></g>
+    </g>
+    <g id="s-armR" class="s-arm">
+      <path d="M151 208C152.3 210.2 156.4 216.8 158.7 221.3C161.1 225.7 164.3 232.5 165.4 234.7A9.4 9.4 0 0 1 182.6 227.3C181.7 224.9 179.2 217.6 177.3 212.7C175.3 207.8 172.1 200.4 171 198A11.2 11.2 0 0 1 151 208Z" fill="url(#g-limb)"/>
+      <g id="s-foreR"><path d="M165 233.8C166 236.4 169.2 244.2 170.8 249.1C172.3 254.1 173.8 261.1 174.4 263.5A7.7 7.7 0 0 1 189.6 260.5C189.2 257.9 188.3 250.3 187.2 244.9C186.1 239.5 183.7 231 183 228.2A9.4 9.4 0 0 1 165 233.8Z" fill="url(#g-limb)"/></g>
+      <circle cx="174" cy="231" r="9.4" fill="url(#g-limb)"/>
+      <g id="s-handR"><g transform="translate(182 262) rotate(-10) scale(-1 1)"><g class="s-hand"><path class="s-thumb" d="M-9.8 2.2c-4.7-1-8.2 1.6-8.5 5.7-.3 4.1 2.8 7 7 6.5 3.4-.4 5.4-2.7 5.5-6.1.1-3.2-1.2-5.5-4-6.1Z"/><path class="s-palm" d="M0-3.4c-8 0-12.8 3.7-13.2 10-.3 5 1 9.7 3.7 12.9 2.4 2.9 5.6 4.4 9.5 4.4s7.1-1.5 9.5-4.4c2.7-3.2 4-7.9 3.7-12.9C12.8.3 8-3.4 0-3.4Z"/><g class="s-knuck"><path d="M-5.2 20.6c-.8-2.7-1.1-5.6-.9-8.4"/><path d="M0 21.2c-.4-2.9-.4-5.9 0-8.8"/><path d="M5.2 20.6c.8-2.7 1.1-5.6.9-8.4"/></g></g></g></g>
     </g>
   </svg>
   </div>
@@ -1323,7 +1431,11 @@ html.flipping .more-fade{display:none}
 <div class="sprout-say" id="sproutSay" aria-hidden="true"><span></span></div>
 <button class="sprout-hit" id="sproutHit" type="button">Turn to the next page</button>
 
-<script>window.__resources = { three: new URL("vendor/three.module.js", document.baseURI).href };</script> -->
+<!-- The 3D mascot is retired; both it and the resource map it reads stay here,
+     commented out rather than deleted. This line used to end with a closing
+     comment marker that had no opening one, so the marker printed on the page
+     as text. -->
+<!-- <script>window.__resources = { three: new URL("vendor/three.module.js", document.baseURI).href };</script> -->
 <script>
 /* vendor/jquery.min.js */
 /*! jQuery v3.7.1 | (c) OpenJS Foundation and other contributors | jquery.org/license */
@@ -3586,13 +3698,19 @@ const sBrowR=document.getElementById('s-browR');
  * A pose is the body (arms, head tilt); a face is the mouth/eyes/brows. They are
  * set together but stored apart, so "pointing while curious" is expressible.
  */
+/* Expressions. The mouth is a path swap and the eyes are a small subtree swap;
+   neither travels, which is why they are kept under reduced motion. Coordinates
+   are the head's, so they must move with it if the drawing ever changes. */
 const FACES={
-  happy:  {mouth:'M104 161c8 12 24 12 32 0', brows:0, eyes:'normal'},
-  smile:  {mouth:'M107 143c7 10 19 10 26 0', brows:0, eyes:'happyclosed'},
-  curious:{mouth:'M114 142a6 6 0 1 0 12 0a6 6 0 1 0 -12 0',
-           brows:1, browL:'M85 94c7-6 17-5 23 2', browR:'M131 97c7-7 17-6 23 1', eyes:'wide'},
-  cheer:  {mouth:'M101 140c9 15 29 15 38 0', brows:1,
-           browL:'M86 92c7-5 17-4 23 1', browR:'M131 93c7-5 17-4 23 1', eyes:'happyclosed'}
+  happy:  {mouth:'M105 160c9 13 21 13 30 0', brows:0, eyes:'normal'},
+  smile:  {mouth:'M108 159c7 9 17 9 24 0',   brows:0, eyes:'arc'},
+  curious:{mouth:'M113 158a7.5 7.5 0 1 0 15 0a7.5 7.5 0 1 0 -15 0', brows:1,
+           browL:'M84 108c8-7 19-6 26 2', browR:'M131 111c8-8 19-7 26 1', eyes:'wide'},
+  cheer:  {mouth:'M101 156c11 17 27 17 38 0', brows:1,
+           browL:'M85 106c8-6 19-5 26 1', browR:'M130 107c8-6 19-5 26 1', eyes:'arc'},
+  wink:   {mouth:'M106 159c9 12 20 12 28 0', brows:0, eyes:'wink'},
+  oh:     {mouth:'M114 156a6.5 8.5 0 1 0 13 0a6.5 8.5 0 1 0 -13 0', brows:1,
+           browL:'M84 105c8-6 19-5 26 2', browR:'M131 106c8-6 19-5 26 1', eyes:'wide'}
 };
 
 /* One line and one pose per spread. Kept short — a speech bubble is a caption,
@@ -3603,8 +3721,8 @@ const GUIDE=[
   {pose:'smile',   face:'smile',   say:"Old wisdom, new tools."},
   {pose:'read',    face:'smile',   say:"The quiet one in the room? That was me too."},
   {pose:'point',   face:'happy',   say:"Everything English, in one place."},
-  {pose:'curious', face:'curious', say:"Four simple steps to begin."},
-  {pose:'happy',   face:'happy',   say:"Meet your tutor."},
+  {pose:'think',   face:'oh',      say:"Four simple steps to begin."},
+  {pose:'happy',   face:'wink',    say:"Meet your tutor."},
   {pose:'point',   face:'happy',   say:"One programme, one fee. No surprises."},
   {pose:'read',    face:'smile',   say:"The house rules, in plain words."},
   {pose:'cheer',   face:'cheer',   say:"That's the whole book. Shall we begin?"}
@@ -3614,7 +3732,7 @@ const sproutSay = document.getElementById('sproutSay');
 const sproutHit = document.getElementById('sproutHit');
 const sayText   = sproutSay ? sproutSay.querySelector('span') : null;
 
-let idleTimer=null, waveTimer=null, sayTimer=null, nudgeTimer=null;
+let idleTimer=null, waveTimer=null, sayTimer=null, nudgeTimer=null, waveBackTimer=null;
 
 function setPose(pose){ sprout.setAttribute('data-pose', pose); }
 
@@ -3693,18 +3811,25 @@ if(sproutHit){
   });
 }
 
+/* Each eye carries a big catchlight and a small one low on the far side. That
+   second dot is most of what separates a drawn eye from a printed dot. */
+const ARC  = '<path d="M87 139c4.5-7 15.5-7 20 0" stroke="#2f2a26" stroke-width="4.4" fill="none" stroke-linecap="round"/>'
+           + '<path d="M133 139c4.5-7 15.5-7 20 0" stroke="#2f2a26" stroke-width="4.4" fill="none" stroke-linecap="round"/>';
+function openEye(cx, rx, ry, hl){
+  return '<ellipse cx="'+cx+'" cy="'+(rx>11?135:136)+'" rx="'+rx+'" ry="'+ry+'" fill="#2f2a26"/>'
+       + '<circle cx="'+(cx+4.5)+'" cy="'+(rx>11?128.5:130)+'" r="'+hl+'" fill="#fff"/>'
+       + '<circle cx="'+(cx-4)+'" cy="141.5" r="'+(hl*0.52)+'" fill="#fff" opacity=".65"/>';
+}
 function setEyes(kind){
-  if(kind==='happyclosed'){
-    sEyes.innerHTML='<path d="M89 144c3-5 12-5 15 0" stroke="#2a2a26" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M133 144c3-5 12-5 15 0" stroke="#2a2a26" stroke-width="4" fill="none" stroke-linecap="round"/>';
-  }else{
-    const ry = kind==='wide' ? 13.5 : 11.5;
-    const rx = kind==='wide' ? 9.5 : 8.5;
-    sEyes.innerHTML=
-      '<ellipse cx="98" cy="142" rx="'+rx+'" ry="'+ry+'" fill="#2a2a26"/>'+
-      '<ellipse cx="140" cy="142" rx="'+rx+'" ry="'+ry+'" fill="#2a2a26"/>'+
-      '<circle cx="101" cy="138" r="2.8" fill="#fff"/>'+
-      '<circle cx="143" cy="138" r="2.8" fill="#fff"/>';
+  if(kind==='arc'){ sEyes.innerHTML = ARC; return; }
+  if(kind==='wink'){
+    sEyes.innerHTML = openEye(97, 11, 13.5, 3.9)
+      + '<path d="M133 139c4.5-7 15.5-7 20 0" stroke="#2f2a26" stroke-width="4.4" fill="none" stroke-linecap="round"/>';
+    return;
   }
+  const wide = kind === 'wide';
+  const rx = wide ? 12.5 : 11, ry = wide ? 15.5 : 13.5, hl = wide ? 4.4 : 3.9;
+  sEyes.innerHTML = openEye(97, rx, ry, hl) + openEye(143, rx, ry, hl);
 }
 function setMood(name){
   const m=FACES[name]||FACES.happy;
@@ -3717,12 +3842,29 @@ function setMood(name){
   if(window.Sprout3D) window.Sprout3D.mood(name);
 }
 
+/* Kept under reduced motion: CSS swaps in a gentler, slower swing (waveGentle)
+   rather than removing the greeting entirely. A hand waving hello is brief and
+   local — it is not the kind of large sweeping travel the setting is about.
+
+   The keyframes start and end at the wave pose's own angles, so the arm has to
+   BE in that pose or it snaps there on the first frame and snaps back on the
+   last. The idle wave can fire on any spread, so the pose is taken for the
+   duration and handed back when the animation ends — the arm springs home on the
+   ordinary transition rather than cutting. */
 function waveOnce(){
   if(window.Sprout3D){ window.Sprout3D.wave(); return; }
-  /* Kept under reduced motion: CSS swaps in a gentler, slower swing (waveGentle)
-     rather than removing the greeting entirely. A hand waving hello is brief and
-     local — it is not the kind of large sweeping travel the setting is about. */
+  /* Poses that already hold the right arm up wave from where they are — cheer
+     has its own keyframes, and borrowing would drop it to a one-arm greeting. */
+  const cur  = sprout.getAttribute('data-pose');
+  const keep = cur === 'wave' || cur === 'cheer';
+  const back = keep ? null : cur;
+  if(!keep) setPose('wave');
   sprout.classList.remove('waving'); void sprout.offsetWidth; sprout.classList.add('waving');
+  clearTimeout(waveBackTimer);
+  waveBackTimer = setTimeout(() => {
+    sprout.classList.remove('waving');
+    if(sprout.getAttribute('data-pose') === 'wave' && back && back !== 'wave') setPose(back);
+  }, reduce ? 1800 : 1600);
 }
 
 /* Sprout keeps ONE spot in the left margin for the whole book. It is placed on

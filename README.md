@@ -119,6 +119,8 @@ Open by choice, not by oversight:
 - **Off-screen pages hidden from assistive tech.**
 - **Dead mascot code wired up.** `PLAN`/`setMood()` were written and never
   called; Sprout's expression now follows the spread.
+- **A closing HTML comment marker with no opening one**, left over from
+  disabling the 3D mascot. It printed on the page as text, under the book.
 - **Reduced motion in the 3D mascot.** `reduceM` was declared and never used.
 - **A `.more-fade` rule keyed to turn.js's own class.** Would have hidden the
   overflow hint on every page once turn.js wrapped them. It is keyed to
@@ -126,55 +128,82 @@ Open by choice, not by oversight:
 
 ## Sprout, the guide
 
-Sprout's job is to move the reader through the book: greet them, name the spread
-in front of them, look down when there is more text below the fold, and nudge
-toward the next page when they have gone quiet. **Clicking Sprout turns the
-page** — on the last spread it opens the assessment form instead.
+Sprout is an SVG character, rigged and animated in CSS. Nine poses, six
+expressions, one line per spread.
+
+**Why not three.js or GSAP.** A three.js mascot built out of primitives looks
+like a toy assembled from spheres; getting real 3D quality means a modelled and
+rigged GLTF, which is an art asset, not a code change. It would also put a WebGL
+render loop back on the same main thread the page turns need, and ES modules do
+not load over `file://`, so it cannot run in the standalone build — which is why
+the old 3D mascot in `assets/js/sprout-3d.js` is disabled rather than deleted.
+GSAP buys timeline orchestration, but the idle loop is exactly what CSS
+keyframes do for free on the compositor, and `html.flipping` can pause keyframes
+mid-turn in one line. Neither earns its place here.
 
 ### The rig
 
-Inline SVG, drawn in parts so every pose is one rotation about a named origin:
+Every joint origin is a real coordinate in the drawing (`transform-box:
+view-box`), not a percentage of a bounding box — a bbox moves when the art
+inside it moves, and a joint must not.
 
-| part | pivots at |
-|---|---|
-| `#s-head` | the neck (`50% 96%`) |
-| `#s-armL` / `#s-armR` | its own shoulder |
-| `#s-leaves` | the base of the stem |
+Each arm is **two bones**: the shoulder turns the whole arm, the elbow turns the
+forearm and the hand together. The elbow is what stops a raised arm reading as a
+plank, and it is most of the difference between a character and a stick figure.
 
-The arms are drawn **last**, after the head. Drawn before it, a raised arm
-disappears behind the head — which is what the first pass did, and why "wave"
-and "cheer" were indistinguishable from "smile".
+Three things had to be right for that to hold up:
 
-Seven poses: `smile` `happy` `curious` `wave` `point` `cheer` `read`, driven by
-`data-pose` on `.sprout`. Four faces (`FACES` in `book.js`) set mouth, eyes and
-brows independently, so "pointing while curious" is expressible.
+- **The elbow needs a disc.** Two bones end in semicircular caps, and once the
+  elbow bends those two semicircles no longer close the circle between them —
+  they leave a wedge-shaped notch that reads exactly like a doll's ball joint. A
+  disc of the joint radius, in the arm's own space so the bend never moves it,
+  fills that wedge at any angle.
+- **One gradient ramp for the whole figure.** With the default
+  `objectBoundingBox`, every part gets its own ramp, so the tones meet at a seam
+  wherever two parts touch and the figure reads as pieces bolted together. All
+  the body gradients are `userSpaceOnUse`.
+- **Except the hands, which need their own.** A `userSpaceOnUse` gradient
+  resolves in the local space of whatever references it, and each hand sits
+  inside a `translate()` out to the wrist. Against the figure-wide ramp the hands
+  were sampling 205 units from its centre, past the last stop, and came out a
+  full shade darker than the forearms they attach to — measured at rgb(240,226,200)
+  against the forearm's rgb(253,246,234). They have a ramp in hand space now, and
+  every part of the figure sits within a few points of every other.
 
-### What it says
+The arms carry no contour of their own. Two bones plus the elbow disc cannot
+share one outline — a stroke drawn per piece reappears straight across the join
+the moment the elbow bends — so separation comes from a soft cast shadow, and the
+head and body wear a light contour rather than a hard one.
 
-`GUIDE` in `assets/js/book.js` holds one pose and one line per spread. The line
-appears in a bubble **below** Sprout. Above is the obvious place and was tried:
-the margin is only ~130 px wide, so a bubble wide enough to read overhangs into
-the book and lands straight on the next-page arrow. Covering the navigation is a
-bad trade for a caption.
+The limb outlines are generated rather than hand-drawn: a joint chain of
+`(x, y, half-width)` is walked down one side and back up the other with a
+Catmull-Rom spline through the offsets, so the silhouette tapers from shoulder to
+wrist with no visible corners.
 
-The bubble and the click target are siblings of the mascot, not children —
-anything inside inherits its scale transform, which at the small end shrinks the
-text to nothing. All three are positioned from the same numbers in
-`moveSprout()`.
+### What it says and does
 
-### Nudging
+Poses: rest, smile, happy, curious, wave, point, read, cheer, think.
+Expressions: happy, smile, curious, cheer, wink, oh — a mouth path swap plus an
+eye subtree swap, with brows fading in only for the faces that need them. Neither
+travels, which is why expressions are kept under reduced motion.
 
-After ~9 s without a turn, Sprout reacts to what is actually on screen:
+**The wave lives in the forearm and wrist, not the shoulder.** That is how an arm
+actually waves, and it is the difference between a greeting and a metronome. The
+shoulder only breathes a few degrees underneath it, and the whole body leans in,
+because an arm moving on a still body reads like a puppet rather than a creature.
 
-- page still has text below the fold → `read` pose, *"There's a little more below."*
-- page fully read → `point` pose with a pulsing arm, *"Turn the page when you're ready."*
-- last spread → `cheer`, *"Ready when you are."*
+The keyframes start and end at the wave pose's own angles, so the arm has to *be*
+in that pose or it snaps there on the first frame and back on the last. The idle
+wave can fire on any spread, so `waveOnce()` borrows the pose for the duration
+and hands it back when the animation ends. Cheer is the exception: it already
+holds both arms up and has keyframes anchored to its own angles, so it waves from
+where it is instead of dropping to a one-arm greeting.
 
-Verified: the greeting fires on the cover, nothing waves mid-book, the finale
-cheers — identically with and without `prefers-reduced-motion`.
-
-Below ~900 px there is no margin to stand in, so Sprout, the bubble and the
-click target all withdraw together.
+Under `prefers-reduced-motion` the greeting stays — a hand waving hello is brief
+and local, not the kind of large sweeping travel the setting is about — but it
+slows down, loses the body lean, and swings through a third of the arc. Cheer's
+wave out-specifies the general rule, so the reduced-motion block names it
+explicitly or it would keep the full-speed swing.
 
 ## Why it can look different on two computers
 

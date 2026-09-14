@@ -340,13 +340,19 @@ const sBrowR=document.getElementById('s-browR');
  * A pose is the body (arms, head tilt); a face is the mouth/eyes/brows. They are
  * set together but stored apart, so "pointing while curious" is expressible.
  */
+/* Expressions. The mouth is a path swap and the eyes are a small subtree swap;
+   neither travels, which is why they are kept under reduced motion. Coordinates
+   are the head's, so they must move with it if the drawing ever changes. */
 const FACES={
-  happy:  {mouth:'M104 161c8 12 24 12 32 0', brows:0, eyes:'normal'},
-  smile:  {mouth:'M107 143c7 10 19 10 26 0', brows:0, eyes:'happyclosed'},
-  curious:{mouth:'M114 142a6 6 0 1 0 12 0a6 6 0 1 0 -12 0',
-           brows:1, browL:'M85 94c7-6 17-5 23 2', browR:'M131 97c7-7 17-6 23 1', eyes:'wide'},
-  cheer:  {mouth:'M101 140c9 15 29 15 38 0', brows:1,
-           browL:'M86 92c7-5 17-4 23 1', browR:'M131 93c7-5 17-4 23 1', eyes:'happyclosed'}
+  happy:  {mouth:'M105 160c9 13 21 13 30 0', brows:0, eyes:'normal'},
+  smile:  {mouth:'M108 159c7 9 17 9 24 0',   brows:0, eyes:'arc'},
+  curious:{mouth:'M113 158a7.5 7.5 0 1 0 15 0a7.5 7.5 0 1 0 -15 0', brows:1,
+           browL:'M84 108c8-7 19-6 26 2', browR:'M131 111c8-8 19-7 26 1', eyes:'wide'},
+  cheer:  {mouth:'M101 156c11 17 27 17 38 0', brows:1,
+           browL:'M85 106c8-6 19-5 26 1', browR:'M130 107c8-6 19-5 26 1', eyes:'arc'},
+  wink:   {mouth:'M106 159c9 12 20 12 28 0', brows:0, eyes:'wink'},
+  oh:     {mouth:'M114 156a6.5 8.5 0 1 0 13 0a6.5 8.5 0 1 0 -13 0', brows:1,
+           browL:'M84 105c8-6 19-5 26 2', browR:'M131 106c8-6 19-5 26 1', eyes:'wide'}
 };
 
 /* One line and one pose per spread. Kept short — a speech bubble is a caption,
@@ -357,8 +363,8 @@ const GUIDE=[
   {pose:'smile',   face:'smile',   say:"Old wisdom, new tools."},
   {pose:'read',    face:'smile',   say:"The quiet one in the room? That was me too."},
   {pose:'point',   face:'happy',   say:"Everything English, in one place."},
-  {pose:'curious', face:'curious', say:"Four simple steps to begin."},
-  {pose:'happy',   face:'happy',   say:"Meet your tutor."},
+  {pose:'think',   face:'oh',      say:"Four simple steps to begin."},
+  {pose:'happy',   face:'wink',    say:"Meet your tutor."},
   {pose:'point',   face:'happy',   say:"One programme, one fee. No surprises."},
   {pose:'read',    face:'smile',   say:"The house rules, in plain words."},
   {pose:'cheer',   face:'cheer',   say:"That's the whole book. Shall we begin?"}
@@ -368,7 +374,7 @@ const sproutSay = document.getElementById('sproutSay');
 const sproutHit = document.getElementById('sproutHit');
 const sayText   = sproutSay ? sproutSay.querySelector('span') : null;
 
-let idleTimer=null, waveTimer=null, sayTimer=null, nudgeTimer=null;
+let idleTimer=null, waveTimer=null, sayTimer=null, nudgeTimer=null, waveBackTimer=null;
 
 function setPose(pose){ sprout.setAttribute('data-pose', pose); }
 
@@ -447,18 +453,25 @@ if(sproutHit){
   });
 }
 
+/* Each eye carries a big catchlight and a small one low on the far side. That
+   second dot is most of what separates a drawn eye from a printed dot. */
+const ARC  = '<path d="M87 139c4.5-7 15.5-7 20 0" stroke="#2f2a26" stroke-width="4.4" fill="none" stroke-linecap="round"/>'
+           + '<path d="M133 139c4.5-7 15.5-7 20 0" stroke="#2f2a26" stroke-width="4.4" fill="none" stroke-linecap="round"/>';
+function openEye(cx, rx, ry, hl){
+  return '<ellipse cx="'+cx+'" cy="'+(rx>11?135:136)+'" rx="'+rx+'" ry="'+ry+'" fill="#2f2a26"/>'
+       + '<circle cx="'+(cx+4.5)+'" cy="'+(rx>11?128.5:130)+'" r="'+hl+'" fill="#fff"/>'
+       + '<circle cx="'+(cx-4)+'" cy="141.5" r="'+(hl*0.52)+'" fill="#fff" opacity=".65"/>';
+}
 function setEyes(kind){
-  if(kind==='happyclosed'){
-    sEyes.innerHTML='<path d="M89 144c3-5 12-5 15 0" stroke="#2a2a26" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M133 144c3-5 12-5 15 0" stroke="#2a2a26" stroke-width="4" fill="none" stroke-linecap="round"/>';
-  }else{
-    const ry = kind==='wide' ? 13.5 : 11.5;
-    const rx = kind==='wide' ? 9.5 : 8.5;
-    sEyes.innerHTML=
-      '<ellipse cx="98" cy="142" rx="'+rx+'" ry="'+ry+'" fill="#2a2a26"/>'+
-      '<ellipse cx="140" cy="142" rx="'+rx+'" ry="'+ry+'" fill="#2a2a26"/>'+
-      '<circle cx="101" cy="138" r="2.8" fill="#fff"/>'+
-      '<circle cx="143" cy="138" r="2.8" fill="#fff"/>';
+  if(kind==='arc'){ sEyes.innerHTML = ARC; return; }
+  if(kind==='wink'){
+    sEyes.innerHTML = openEye(97, 11, 13.5, 3.9)
+      + '<path d="M133 139c4.5-7 15.5-7 20 0" stroke="#2f2a26" stroke-width="4.4" fill="none" stroke-linecap="round"/>';
+    return;
   }
+  const wide = kind === 'wide';
+  const rx = wide ? 12.5 : 11, ry = wide ? 15.5 : 13.5, hl = wide ? 4.4 : 3.9;
+  sEyes.innerHTML = openEye(97, rx, ry, hl) + openEye(143, rx, ry, hl);
 }
 function setMood(name){
   const m=FACES[name]||FACES.happy;
@@ -471,12 +484,29 @@ function setMood(name){
   if(window.Sprout3D) window.Sprout3D.mood(name);
 }
 
+/* Kept under reduced motion: CSS swaps in a gentler, slower swing (waveGentle)
+   rather than removing the greeting entirely. A hand waving hello is brief and
+   local — it is not the kind of large sweeping travel the setting is about.
+
+   The keyframes start and end at the wave pose's own angles, so the arm has to
+   BE in that pose or it snaps there on the first frame and snaps back on the
+   last. The idle wave can fire on any spread, so the pose is taken for the
+   duration and handed back when the animation ends — the arm springs home on the
+   ordinary transition rather than cutting. */
 function waveOnce(){
   if(window.Sprout3D){ window.Sprout3D.wave(); return; }
-  /* Kept under reduced motion: CSS swaps in a gentler, slower swing (waveGentle)
-     rather than removing the greeting entirely. A hand waving hello is brief and
-     local — it is not the kind of large sweeping travel the setting is about. */
+  /* Poses that already hold the right arm up wave from where they are — cheer
+     has its own keyframes, and borrowing would drop it to a one-arm greeting. */
+  const cur  = sprout.getAttribute('data-pose');
+  const keep = cur === 'wave' || cur === 'cheer';
+  const back = keep ? null : cur;
+  if(!keep) setPose('wave');
   sprout.classList.remove('waving'); void sprout.offsetWidth; sprout.classList.add('waving');
+  clearTimeout(waveBackTimer);
+  waveBackTimer = setTimeout(() => {
+    sprout.classList.remove('waving');
+    if(sprout.getAttribute('data-pose') === 'wave' && back && back !== 'wave') setPose(back);
+  }, reduce ? 1800 : 1600);
 }
 
 /* Sprout keeps ONE spot in the left margin for the whole book. It is placed on
