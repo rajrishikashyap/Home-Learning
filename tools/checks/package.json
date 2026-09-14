@@ -1,0 +1,15 @@
+{
+  "name": "home-learning-checks",
+  "private": true,
+  "type": "module",
+  "description": "Headless checks for the book, the guide and the page turn.",
+  "scripts": {
+    "book":   "node book.mjs",
+    "nav":    "node nav.mjs",
+    "guide":  "node guide.mjs",
+    "motion": "node reduced-motion.mjs",
+    "turn":   "node turn-cadence.mjs",
+    "all":    "node book.mjs && node nav.mjs && node guide.mjs && node reduced-motion.mjs && node turn-cadence.mjs"
+  },
+  "dependencies": { "playwright-core": "^1.40.0" }
+}

@@ -19,6 +19,30 @@ python3 -m http.server 8000
 `Home-Learning-standalone.html` opens straight from disk if you just want to
 look at it; the served version is the source of truth.
 
+## Checking your work
+
+The headless checks in `tools/checks/` are what every performance and behaviour
+claim in this file was measured with. Serve the site first — turn.js needs real
+URLs, so `file://` will not do:
+
+```bash
+python3 -m http.server 8000 &
+cd tools/checks && npm install && npm run all
+```
+
+| | |
+|---|---|
+| `book` | pages, views, scroll-to-turn at desktop / tablet / phone |
+| `nav` | all ten spreads and their pairings |
+| `guide` | Sprout's poses, expressions and the wave |
+| `reduced-motion` | what survives `prefers-reduced-motion`, and what slows down |
+| `turn-cadence` | frame gaps through one turn, 5 trials |
+| `drag` | the corner drag stays floored at the cover |
+| `reflow` | forced synchronous layouts per frame |
+
+`BASE=http://localhost:8080` to point them elsewhere; `CHROME=/path/to/chrome`
+to pick the browser.
+
 ## Layout
 
 ```
@@ -31,7 +55,10 @@ assets/js/sprout-3d.js      retired 3D mascot (disabled — see The mascot)
 assets/fonts/               Quicksand, Nunito Sans, Caveat (variable woff2)
 assets/img/                 logo + philosophy plate
 vendor/                     third-party libraries
+CLAUDE.md                   the short list of things that break if you don't know
 tools/build-standalone.py   inlines everything into the single-file build
+tools/limb.py               generates the mascot's tapered arm outlines
+tools/checks/               headless checks — see Checking your work
 ```
 
 This was originally a single self-extracting 9.5 MB HTML bundle. It has been

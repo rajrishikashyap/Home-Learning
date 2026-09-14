@@ -1,2 +1,5 @@
 .DS_Store
 node_modules/
+tools/checks/node_modules/
+tools/checks/package-lock.json
+tools/checks/*.png
